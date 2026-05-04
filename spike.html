@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GAS API 通信スパイク</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Sans", -apple-system, sans-serif;
+      background: #f5f5f5;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    h1 { font-size: 18px; margin-bottom: 16px; }
+    p { font-size: 14px; margin-bottom: 16px; color: #555; }
+    button {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: #7C6F5A;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    button:disabled { opacity: 0.5; }
+    pre {
+      background: #1e1e1e;
+      color: #4ec9b0;
+      padding: 16px;
+      border-radius: 4px;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-bottom: 12px;
+    }
+    .status { font-weight: bold; }
+    .ok { color: #4ec9b0; }
+    .ng { color: #f48771; }
+    .info {
+      background: #fff;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>GAS API 通信スパイク</h1>
+  <p>このページから GAS の <code>doPost()</code> を fetch で呼んで、応答が返るかをテストします。Instagram IAB でも動くかが本命。</p>
+
+  <div class="info">
+    <strong>環境情報:</strong><br>
+    <span id="env-info"></span>
+  </div>
+
+  <button id="test-btn">GAS APIを叩く（fetch POST）</button>
+  <button id="test-btn2">GAS APIを叩く（URLSearchParams）</button>
+
+  <pre id="result">↑ボタンを押して結果を確認</pre>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwGknTdmReT2qDHp_PrdF_u9MMZoWSbEBU8IMcLanTks-EDiDYxj1obttPRbokiue84/exec';
+
+    // 環境情報を表示
+    const ua = navigator.userAgent || '';
+    const isIAB = /Instagram|FBAN|FBAV|Line\//i.test(ua);
+    document.getElementById('env-info').innerHTML =
+      'UA: ' + ua + '<br>' +
+      'IAB検知: <strong style="color:' + (isIAB ? '#c00' : '#0a0') + '">' + (isIAB ? 'YES (IAB内)' : 'NO (通常ブラウザ)') + '</strong>';
+
+    function showResult(label, data, isError) {
+      const el = document.getElementById('result');
+      const cls = isError ? 'ng' : 'ok';
+      el.innerHTML = '<span class="status ' + cls + '">' + label + '</span>\n\n' +
+        (typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+    }
+
+    // テスト1: 通常のJSON POST
+    document.getElementById('test-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('test-btn');
+      btn.disabled = true;
+      showResult('通信中...', { method: 'fetch POST with JSON body' });
+      try {
+        const start = Date.now();
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'spike-test',
+            from: 'github-pages',
+            timestamp: new Date().toISOString(),
+            ua: ua,
+          }),
+        });
+        const elapsed = Date.now() - start;
+        const text = await res.text();
+        let parsed;
+        try { parsed = JSON.parse(text); } catch (e) { parsed = text; }
+        showResult('成功 (' + elapsed + 'ms, status ' + res.status + ')', parsed);
+      } catch (err) {
+        showResult('エラー', err.toString() + '\n\n' + (err.stack || ''), true);
+      }
+      btn.disabled = false;
+    });
+
+    // テスト2: URLSearchParams（CORS preflightを避けるパターン）
+    document.getElementById('test-btn2').addEventListener('click', async () => {
+      const btn = document.getElementById('test-btn2');
+      btn.disabled = true;
+      showResult('通信中...', { method: 'fetch POST with URLSearchParams' });
+      try {
+        const start = Date.now();
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          body: new URLSearchParams({
+            data: JSON.stringify({
+              action: 'spike-test-2',
+              from: 'github-pages-v2',
+              ua: ua,
+            }),
+            ua: ua,
+          }),
+        });
+        const elapsed = Date.now() - start;
+        const text = await res.text();
+        let parsed;
+        try { parsed = JSON.parse(text); } catch (e) { parsed = text; }
+        showResult('成功 (' + elapsed + 'ms, status ' + res.status + ')', parsed);
+      } catch (err) {
+        showResult('エラー', err.toString() + '\n\n' + (err.stack || ''), true);
+      }
+      btn.disabled = false;
+    });
+  </script>
+</body>
+</html>
