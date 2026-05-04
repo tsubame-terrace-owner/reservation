@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>燕テラス ご予約</title>
+  <meta name="description" content="燕テラスのご予約フォーム">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Noto Serif JP", "Hiragino Mincho ProN", "游明朝", YuMincho, serif;
+      background: #FAF8F4;
+      color: #2C2824;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container {
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+    .store-name {
+      font-size: 32px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      margin-bottom: 12px;
+      color: #2C2824;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #6B655C;
+      letter-spacing: 0.15em;
+      margin-bottom: 48px;
+    }
+    .reserve-btn {
+      display: inline-block;
+      background: #7C6F5A;
+      color: white;
+      text-decoration: none;
+      padding: 18px 48px;
+      font-size: 16px;
+      letter-spacing: 0.1em;
+      border-radius: 3px;
+      transition: background 0.15s;
+      font-family: inherit;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .reserve-btn:hover, .reserve-btn:active {
+      background: #5A4F3E;
+    }
+    .iab-warning {
+      background: #FFF3E0;
+      border-left: 3px solid #C08A3E;
+      padding: 16px 20px;
+      margin-top: 32px;
+      font-size: 13px;
+      color: #5A4F3E;
+      text-align: left;
+      border-radius: 0 3px 3px 0;
+      display: none;
+    }
+    .iab-warning.show {
+      display: block;
+    }
+    .iab-warning strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #C08A3E;
+    }
+    .iab-warning ol {
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+    .iab-warning li {
+      margin-bottom: 4px;
+    }
+    .footer {
+      margin-top: 64px;
+      font-size: 12px;
+      color: #6B655C;
+      letter-spacing: 0.05em;
+    }
+    @media (max-width: 480px) {
+      .store-name { font-size: 28px; }
+      .reserve-btn { padding: 16px 40px; font-size: 15px; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1 class="store-name">燕テラス</h1>
+    <p class="subtitle">ご予約ページ</p>
+
+    <a id="reserve-btn" class="reserve-btn"
+       href="https://script.google.com/macros/s/AKfycbwGknTdmReT2qDHp_PrdF_u9MMZoWSbEBU8IMcLanTks-EDiDYxj1obttPRbokiue84/exec"
+       target="_blank" rel="noopener">
+      予約フォームを開く
+    </a>
+
+    <div id="iab-warning" class="iab-warning">
+      <strong>⚠ 表示できない場合は外部ブラウザでお開きください</strong>
+      Instagramアプリ内では予約フォームが正常に表示されないことがあります。
+      <ol>
+        <li>右上のメニュー（︙ または …）をタップ</li>
+        <li>「ブラウザで開く」または「外部ブラウザで開く」を選択</li>
+      </ol>
+    </div>
+
+    <div class="footer">&copy; 燕テラス</div>
+  </main>
+
+  <script>
+    // Instagram / Facebook / LINE などのアプリ内ブラウザ検知
+    var ua = navigator.userAgent || '';
+    var isIAB = /Instagram|FBAN|FBAV|Line\//i.test(ua);
+    if (isIAB) {
+      document.getElementById('iab-warning').classList.add('show');
+    }
+  </script>
+</body>
+</html>
