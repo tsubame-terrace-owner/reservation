@@ -54,32 +54,6 @@
     .reserve-btn:hover, .reserve-btn:active {
       background: #5A4F3E;
     }
-    .iab-warning {
-      background: #FFF3E0;
-      border-left: 3px solid #C08A3E;
-      padding: 16px 20px;
-      margin-top: 32px;
-      font-size: 13px;
-      color: #5A4F3E;
-      text-align: left;
-      border-radius: 0 3px 3px 0;
-      display: none;
-    }
-    .iab-warning.show {
-      display: block;
-    }
-    .iab-warning strong {
-      display: block;
-      margin-bottom: 8px;
-      color: #C08A3E;
-    }
-    .iab-warning ol {
-      margin: 8px 0 0 20px;
-      padding: 0;
-    }
-    .iab-warning li {
-      margin-bottom: 4px;
-    }
     .footer {
       margin-top: 64px;
       font-size: 12px;
@@ -97,31 +71,11 @@
     <h1 class="store-name">燕テラス</h1>
     <p class="subtitle">ご予約ページ</p>
 
-    <a id="reserve-btn" class="reserve-btn"
-       href="https://script.google.com/macros/s/AKfycbwGknTdmReT2qDHp_PrdF_u9MMZoWSbEBU8IMcLanTks-EDiDYxj1obttPRbokiue84/exec"
-       target="_blank" rel="noopener">
+    <a id="reserve-btn" class="reserve-btn" href="./form.html">
       予約フォームを開く
     </a>
 
-    <div id="iab-warning" class="iab-warning">
-      <strong>⚠ 表示できない場合は外部ブラウザでお開きください</strong>
-      Instagramアプリ内では予約フォームが正常に表示されないことがあります。
-      <ol>
-        <li>右上のメニュー（︙ または …）をタップ</li>
-        <li>「ブラウザで開く」または「外部ブラウザで開く」を選択</li>
-      </ol>
-    </div>
-
     <div class="footer">&copy; 燕テラス</div>
   </main>
-
-  <script>
-    // Instagram / Facebook / LINE などのアプリ内ブラウザ検知
-    var ua = navigator.userAgent || '';
-    var isIAB = /Instagram|FBAN|FBAV|Line\//i.test(ua);
-    if (isIAB) {
-      document.getElementById('iab-warning').classList.add('show');
-    }
-  </script>
 </body>
 </html>
