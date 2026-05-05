@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: "Hiragino Mincho ProN", "游明朝", YuMincho, serif; color: #2C2824; line-height: 1.8; background: #FAF8F4; margin: 0; padding: 20px; }
+  .wrap { max-width: 560px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E8E2D4; }
+  .header { text-align: center; padding: 32px 20px 20px; border-bottom: 1px solid #E8E2D4; }
+  .store { font-size: 22px; letter-spacing: 0.1em; margin: 0 0 8px; color: #2C2824; }
+  .sub { font-size: 13px; color: #7C6F5A; letter-spacing: 0.1em; margin: 0; }
+  .body { padding: 28px 28px 20px; }
+  .greeting { font-size: 15px; margin: 0 0 20px; }
+  .lead { font-size: 14px; margin: 0 0 24px; }
+  .box { background: #FAF8F4; padding: 16px 20px; margin: 16px 0; }
+  .box.old { border-left: 3px solid #C4BFB3; opacity: 0.85; }
+  .box.new { border-left: 3px solid #7C6F5A; }
+  .box-title { font-size: 12px; color: #6B655C; letter-spacing: 0.1em; margin: 0 0 12px; }
+  table.info { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.info td { padding: 6px 0; vertical-align: top; }
+  table.info td.label { width: 90px; color: #6B655C; font-size: 13px; }
+  .btn-area { text-align: center; margin: 28px 0 20px; }
+  .btn { display: block; width: 240px; padding: 12px 0; margin: 8px auto; background: #FFFFFF; color: #7C6F5A !important; text-decoration: none; font-size: 13px; border-radius: 3px; letter-spacing: 0.05em; border: 1px solid #7C6F5A; text-align: center; box-sizing: border-box; }
+  .arrow { text-align: center; font-size: 18px; color: #7C6F5A; margin: 4px 0; }
+  .access { border-top: 1px solid #E8E2D4; padding-top: 16px; margin-top: 20px; font-size: 15px; }
+  .access-title { font-size: 13px; color: #6B655C; letter-spacing: 0.1em; margin: 0 0 10px; }
+  .access table { border-collapse: collapse; font-size: 15px; }
+  .access td { padding: 4px 0; vertical-align: top; }
+  .access td.lbl { color: #6B655C; white-space: nowrap; padding-right: 16px; }
+  .access a { color: #7C6F5A; }
+  .footer { text-align: center; padding: 20px; font-size: 11px; color: #6B655C; background: #F0EBE0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1 class="store"><?= storeName ?></h1>
+    <p class="sub">ご予約内容の変更</p>
+  </div>
+
+  <div class="body">
+    <p class="greeting"><?= reservation.name ?> 様</p>
+    <p class="lead">
+      ご予約内容を下記の通り変更いたしました。<br>
+      ご確認のほどよろしくお願いいたします。
+    </p>
+
+    <div class="box old">
+      <p class="box-title">変更前</p>
+      <table class="info">
+        <tr><td class="label">ご来店日</td><td><?= formatDateForDisplay(oldReservation.reservationDate) ?></td></tr>
+        <tr><td class="label">お時間</td><td><?= oldReservation.slotLabel ?></td></tr>
+        <tr><td class="label">人数</td><td>合計 <?= oldReservation.totalPeople ?> 名</td></tr>
+      </table>
+    </div>
+
+    <div class="arrow">↓</div>
+
+    <div class="box new">
+      <p class="box-title">変更後（確定）</p>
+      <table class="info">
+        <tr><td class="label">ご来店日</td><td><?= formatDateForDisplay(reservation.reservationDate) ?></td></tr>
+        <tr><td class="label">お時間</td><td><?= reservation.slotLabel ?></td></tr>
+        <tr><td class="label">人数</td><td>合計 <?= reservation.totalPeople ?> 名（大人 <?= reservation.adults ?> / お子様 <?= reservation.children ?>）</td></tr>
+        <tr><td class="label">予約番号</td><td><?= reservation.reservationId ?></td></tr>
+      </table>
+    </div>
+
+    <p style="font-size:14px; margin:24px 0 12px;">
+      さらに変更やキャンセルが必要な場合はこちらから承ります。
+    </p>
+
+    <div class="btn-area">
+      <a href="<?= changeUrl ?>" class="btn btn-outline">もう一度変更する</a>
+      <a href="<?= cancelUrl ?>" class="btn">キャンセルする</a>
+    </div>
+    <div class="access">
+      <p class="access-title">＜店舗情報＞</p>
+      <table>
+        <tr>
+          <td class="lbl">〇 住所</td>
+          <td>〒639-2146<br>奈良県葛城市中戸411-1<br>燕さんじょう亭 外蔵</td>
+        </tr>
+        <tr>
+          <td class="lbl">〇 地図</td>
+          <td><a href="https://maps.app.goo.gl/BJhfWoViGTUfWcYj9">Google マップで見る</a></td>
+        </tr>
+        <tr>
+          <td class="lbl">〇 Instagram</td>
+          <td><a href="https://www.instagram.com/tsubame_terrace">@tsubame_terrace</a></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <?= storeName ?>
+  </div>
+</div>
+</body>
+</html>

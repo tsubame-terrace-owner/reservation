@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="store-name"><?= config.storeName ?></h1>
+      <p class="subtitle">手動予約入力（管理用）</p>
+    </header>
+
+    <main id="app">
+      <!-- ステップ1: 日付と枠の選択 -->
+      <section id="step-calendar" class="step active">
+        <h2 class="step-title">1. 日時を選ぶ</h2>
+        <p class="guide">予約希望日と時間枠を選択してください</p>
+        <div id="calendar" class="calendar-wrap">
+          <div class="loading">空き状況を読み込んでいます...</div>
+        </div>
+        <div class="note">
+          <ul>
+            <li>当日〜<?= config.bookingWindowDays ?>日先まで入力可能</li>
+            <li>各枠お1組あたり<?= config.capacity ?>名様まで</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ステップ2: 情報入力 -->
+      <section id="step-details" class="step">
+        <h2 class="step-title">2. 予約情報を入力</h2>
+        <div class="selected-slot" id="selected-slot-display"></div>
+
+        <div class="form-group">
+          <label>大人の人数 <span class="required">必須</span></label>
+          <div class="number-input">
+            <button type="button" class="num-btn" data-field="adults" data-delta="-1">−</button>
+            <input type="number" id="adults" min="1" max="12" value="2" readonly>
+            <button type="button" class="num-btn" data-field="adults" data-delta="1">+</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>お子様の人数</label>
+          <div class="number-input">
+            <button type="button" class="num-btn" data-field="children" data-delta="-1">−</button>
+            <input type="number" id="children" min="0" max="12" value="0" readonly>
+            <button type="button" class="num-btn" data-field="children" data-delta="1">+</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="name">お名前 <span class="required">必須</span></label>
+          <input type="text" id="name" placeholder="燕 太郎">
+        </div>
+
+        <div class="form-group">
+          <label for="phone">お電話番号</label>
+          <input type="tel" id="phone" placeholder="任意">
+        </div>
+
+        <div class="form-group">
+          <label for="email">メールアドレス</label>
+          <input type="email" id="email" placeholder="任意">
+          <p class="hint">入力するとお客様に確認メール（変更・キャンセルURL付き）が届きます</p>
+        </div>
+
+        <div class="form-group">
+          <label for="source">予約経路</label>
+          <select id="source">
+            <option value="Instagram DM">Instagram DM</option>
+            <option value="LINE">LINE</option>
+            <option value="電話">電話</option>
+            <option value="知人紹介">知人紹介</option>
+            <option value="店頭">店頭</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">メモ</label>
+          <textarea id="notes" rows="3" placeholder="アレルギー、ベビーカーのご利用など"></textarea>
+        </div>
+
+        <div class="button-row">
+          <button type="button" class="btn-secondary" id="back-to-calendar">← 日時を選び直す</button>
+          <button type="button" class="btn-primary" id="go-confirm">確認画面へ →</button>
+        </div>
+      </section>
+
+      <!-- ステップ3: 確認 -->
+      <section id="step-confirm" class="step">
+        <h2 class="step-title">3. 入力内容の確認</h2>
+        <div class="confirm-box" id="confirm-content"></div>
+        <div class="button-row">
+          <button type="button" class="btn-secondary" id="back-to-details">← 戻る</button>
+          <button type="button" class="btn-primary" id="submit-manual">この内容で登録する</button>
+        </div>
+      </section>
+
+      <!-- 完了画面 -->
+      <section id="step-complete" class="step">
+        <div class="complete-box">
+          <div class="check-icon">✓</div>
+          <h2>登録しました</h2>
+          <p id="complete-message">手動予約を登録しました。</p>
+          <div class="confirm-box" id="complete-content"></div>
+          <div class="btn-area">
+            <button type="button" class="btn-primary" id="reset-form">もう1件入力する</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>&copy; <?= config.storeName ?> 管理画面</p>
+    </footer>
+  </div>
+
+  <div id="error-toast" class="toast"></div>
+
+  <script>
+    const CONFIG = <?!= JSON.stringify(config) ?>;
+    const TOKEN = '<?= token ?>';
+    const state = {
+      selectedDate: null,
+      selectedSlot: null,
+      availability: null,
+      form: {},
+    };
+
+    function showStep(id) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    function showToast(msg, isError = true) {
+      const el = document.getElementById('error-toast');
+      el.textContent = msg;
+      el.className = 'toast show ' + (isError ? 'error' : 'success');
+      setTimeout(() => { el.className = 'toast'; }, 4000);
+    }
+
+    function formatDate(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatDateJa(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      const wd = ['日','月','火','水','木','金','土'][date.getDay()];
+      return `${y}年${m}月${d}日 (${wd})`;
+    }
+
+    function getSlotLabel(slotId) {
+      const s = CONFIG.slots.find(x => x.id === slotId);
+      return s ? s.label : slotId;
+    }
+
+    function loadAvailability() {
+      const today = new Date();
+      const start = new Date(today);
+      start.setDate(start.getDate() + CONFIG.minDaysAhead);
+      const end = new Date(today);
+      end.setDate(end.getDate() + CONFIG.bookingWindowDays);
+
+      google.script.run
+        .withSuccessHandler(data => {
+          state.availability = data;
+          renderCalendar(start, end);
+        })
+        .withFailureHandler(err => {
+          document.getElementById('calendar').innerHTML =
+            '<p class="error">空き状況の取得に失敗しました。</p>';
+        })
+        .getAvailabilityRange(formatDate(start), formatDate(end));
+    }
+
+    function renderCalendar(startDate, endDate) {
+      const wrap = document.getElementById('calendar');
+      wrap.innerHTML = '';
+
+      const monthsMap = {};
+      const cursor = new Date(startDate);
+      while (cursor <= endDate) {
+        const key = `${cursor.getFullYear()}-${cursor.getMonth()}`;
+        if (!monthsMap[key]) monthsMap[key] = [];
+        monthsMap[key].push(new Date(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      Object.keys(monthsMap).forEach(key => {
+        const dates = monthsMap[key];
+        const first = dates[0];
+        const monthLabel = `${first.getFullYear()}年${first.getMonth() + 1}月`;
+
+        const monthBlock = document.createElement('div');
+        monthBlock.className = 'month-block';
+        monthBlock.innerHTML = `<h3 class="month-title">${monthLabel}</h3>`;
+
+        const list = document.createElement('div');
+        list.className = 'date-list';
+
+        dates.forEach(date => {
+          const dateStr = formatDate(date);
+          const wd = ['日','月','火','水','木','金','土'][date.getDay()];
+          const avail = state.availability[dateStr] || {};
+          const isHoliday = CONFIG.slots.some(s => avail[s.id] && avail[s.id].isHoliday);
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+          const row = document.createElement('div');
+          row.className = 'date-row' + (isHoliday ? ' holiday' : '');
+
+          const dateCell = document.createElement('div');
+          dateCell.className = 'date-cell' + (isWeekend ? ' weekend' : '');
+          dateCell.innerHTML = `
+            <span class="day-num">${date.getDate()}</span>
+            <span class="day-wd">${wd}</span>
+          `;
+          row.appendChild(dateCell);
+
+          const slotsCell = document.createElement('div');
+          slotsCell.className = 'slots-cell';
+
+          if (isHoliday) {
+            slotsCell.innerHTML = '<span class="holiday-label">休業日</span>';
+          } else {
+            CONFIG.slots.forEach(s => {
+              const info = avail[s.id] || { available: CONFIG.capacity };
+              const full = info.available <= 0;
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'slot-btn' + (full ? ' disabled' : '');
+              btn.disabled = full;
+              const availLabel = full ? '×' : (info.available >= 6 ? '◯' : `残り${info.available}名`);
+              btn.innerHTML = `
+                <span class="slot-label">${s.label}</span>
+                <span class="slot-avail">${availLabel}</span>
+              `;
+              btn.addEventListener('click', () => onSelectSlot(dateStr, s.id));
+              slotsCell.appendChild(btn);
+            });
+          }
+          row.appendChild(slotsCell);
+          list.appendChild(row);
+        });
+
+        monthBlock.appendChild(list);
+        wrap.appendChild(monthBlock);
+      });
+    }
+
+    function onSelectSlot(dateStr, slotId) {
+      state.selectedDate = dateStr;
+      state.selectedSlot = slotId;
+
+      const display = document.getElementById('selected-slot-display');
+      display.innerHTML = `
+        <div class="selected-inner">
+          <span class="selected-date">${formatDateJa(dateStr)}</span>
+          <span class="selected-slot-label">${getSlotLabel(slotId)}</span>
+        </div>
+      `;
+
+      const avail = state.availability[dateStr][slotId];
+      const maxPeople = avail.available;
+
+      const adults = parseInt(document.getElementById('adults').value);
+      const children = parseInt(document.getElementById('children').value);
+      if (adults + children > maxPeople) {
+        document.getElementById('adults').value = Math.min(adults, maxPeople);
+        document.getElementById('children').value = 0;
+      }
+
+      showStep('step-details');
+    }
+
+    document.querySelectorAll('.num-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const field = btn.dataset.field;
+        const delta = parseInt(btn.dataset.delta);
+        const input = document.getElementById(field);
+        const cur = parseInt(input.value) || 0;
+        const adults = field === 'adults' ? cur + delta : parseInt(document.getElementById('adults').value);
+        const children = field === 'children' ? cur + delta : parseInt(document.getElementById('children').value);
+
+        if (adults < 1) return;
+        if (children < 0) return;
+
+        if (state.selectedDate && state.selectedSlot) {
+          const avail = state.availability[state.selectedDate][state.selectedSlot];
+          if (adults + children > avail.available) {
+            showToast(`選択された枠は残り${avail.available}名です`);
+            return;
+          }
+        }
+        if (adults + children > CONFIG.capacity) {
+          showToast(`1回のご予約は${CONFIG.capacity}名までです`);
+          return;
+        }
+
+        input.value = (field === 'adults' ? adults : children);
+      });
+    });
+
+    document.getElementById('back-to-calendar').addEventListener('click', () => showStep('step-calendar'));
+    document.getElementById('back-to-details').addEventListener('click', () => showStep('step-details'));
+
+    document.getElementById('go-confirm').addEventListener('click', () => {
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      if (!name) { showToast('お名前を入力してください'); return; }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('メールアドレスの形式が正しくありません'); return;
+      }
+
+      state.form = {
+        reservationDate: state.selectedDate,
+        slot: state.selectedSlot,
+        adults: parseInt(document.getElementById('adults').value),
+        children: parseInt(document.getElementById('children').value),
+        name: name,
+        phone: phone,
+        email: email,
+        source: document.getElementById('source').value,
+        notes: document.getElementById('notes').value.trim(),
+      };
+
+      renderConfirm();
+      showStep('step-confirm');
+    });
+
+    function renderConfirm() {
+      const f = state.form;
+      const total = f.adults + f.children;
+      const html = `
+        <dl class="confirm-dl">
+          <dt>ご来店日</dt><dd>${formatDateJa(f.reservationDate)}</dd>
+          <dt>お時間</dt><dd>${getSlotLabel(f.slot)}</dd>
+          <dt>人数</dt><dd>合計 ${total} 名（大人 ${f.adults} / お子様 ${f.children}）</dd>
+          <dt>お名前</dt><dd>${escapeHtml(f.name)} 様</dd>
+          ${f.phone ? `<dt>お電話</dt><dd>${escapeHtml(f.phone)}</dd>` : ''}
+          ${f.email ? `<dt>メール</dt><dd>${escapeHtml(f.email)}</dd>` : '<dt>メール</dt><dd style="color:#A0998D;">（未入力 / 確認メールは送られません）</dd>'}
+          <dt>経路</dt><dd>${escapeHtml(f.source)}</dd>
+          ${f.notes ? `<dt>メモ</dt><dd>${escapeHtml(f.notes).replace(/\n/g, '<br>')}</dd>` : ''}
+        </dl>
+      `;
+      document.getElementById('confirm-content').innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    document.getElementById('submit-manual').addEventListener('click', () => {
+      const btn = document.getElementById('submit-manual');
+      btn.disabled = true;
+      btn.textContent = '送信中...';
+      btn.classList.add('is-loading');
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.disabled = false;
+          btn.textContent = 'この内容で登録する';
+          btn.classList.remove('is-loading');
+          if (res.success) {
+            document.getElementById('complete-content').innerHTML =
+              document.getElementById('confirm-content').innerHTML;
+            document.getElementById('complete-message').textContent =
+              res.emailSent
+                ? '手動予約を登録し、お客様に確認メールを送信しました。'
+                : '手動予約を登録しました。（メール未入力のため確認メールは送信していません）';
+            showStep('step-complete');
+          } else {
+            showToast(res.message);
+            if (/残り|満席|休業/.test(res.message)) {
+              loadAvailability();
+            }
+          }
+        })
+        .withFailureHandler(err => {
+          btn.disabled = false;
+          btn.textContent = 'この内容で登録する';
+          btn.classList.remove('is-loading');
+          showToast('送信に失敗しました：' + err.message);
+        })
+        .submitManualReservation(state.form, TOKEN);
+    });
+
+    // 「もう1件入力する」: ページリロードせずに状態だけリセット
+    document.getElementById('reset-form').addEventListener('click', () => {
+      document.getElementById('adults').value = 2;
+      document.getElementById('children').value = 0;
+      document.getElementById('name').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('email').value = '';
+      document.getElementById('source').value = 'Instagram DM';
+      document.getElementById('notes').value = '';
+      document.getElementById('selected-slot-display').innerHTML = '';
+      document.getElementById('confirm-content').innerHTML = '';
+      document.getElementById('complete-content').innerHTML = '';
+
+      state.selectedDate = null;
+      state.selectedSlot = null;
+      state.form = {};
+
+      loadAvailability();
+      showStep('step-calendar');
+    });
+
+    loadAvailability();
+  </script>
+</body>
+</html>

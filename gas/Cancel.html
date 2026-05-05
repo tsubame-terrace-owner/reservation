@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <?!= include('Styles'); ?>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="store-name"><?= storeName ?></h1>
+      <p class="subtitle">ご予約のキャンセル</p>
+    </header>
+
+    <main>
+      <? if (!reservation) { ?>
+        <div class="error-page">
+          <div class="error-icon">！</div>
+          <h2>予約情報が見つかりません</h2>
+          <p>リンクが正しくないか、すでに処理済みの可能性があります。</p>
+          <p>お手数ですが、お店までお問い合わせください。</p>
+        </div>
+      <? } else if (reservation.status !== 'confirmed') { ?>
+        <div class="error-page">
+          <div class="error-icon">！</div>
+          <h2>この予約はすでに無効です</h2>
+          <p>すでにキャンセル済み、または内容変更により無効化されています。</p>
+        </div>
+      <? } else { ?>
+        <section class="step active" id="step-confirm">
+          <h2 class="step-title">以下のご予約をキャンセルします</h2>
+          <div class="confirm-box">
+            <dl class="confirm-dl">
+              <dt>ご来店日</dt>
+              <dd><?= formatDateForDisplay(reservation.reservationDate) ?></dd>
+              <dt>お時間</dt>
+              <dd><?= reservation.slotLabel ?></dd>
+              <dt>人数</dt>
+              <dd>合計 <?= reservation.totalPeople ?> 名</dd>
+              <dt>お名前</dt>
+              <dd><?= reservation.name ?> 様</dd>
+            </dl>
+          </div>
+          <p class="guide" style="margin-top:24px; text-align:center;">
+            キャンセル後は元に戻せません。よろしければ下のボタンを押してください。
+          </p>
+          <div class="button-row">
+            <button type="button" class="btn-danger" id="confirm-cancel" style="flex: 1;">
+              キャンセルを確定する
+            </button>
+          </div>
+        </section>
+
+        <section class="step" id="step-done">
+          <div class="complete-box">
+            <div class="check-icon">✓</div>
+            <h2>キャンセルを承りました</h2>
+            <p>ご登録のメールアドレスに確認メールをお送りしています。<br>
+            またのご来店を心よりお待ちしております。</p>
+            <div class="btn-area">
+              <button type="button" class="btn-secondary" onclick="google.script.run.withSuccessHandler(function(url){top.window.location.href=url}).getWebAppUrl()">予約フォームへ</button>
+            </div>
+          </div>
+        </section>
+      <? } ?>
+    </main>
+
+    <footer class="footer">
+      <p>&copy; <?= storeName ?></p>
+    </footer>
+  </div>
+
+  <div id="error-toast" class="toast"></div>
+
+  <script>
+    const TOKEN = '<?= token ?>';
+
+    function showStep(id) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('error-toast');
+      el.textContent = msg;
+      el.className = 'toast show error';
+      setTimeout(() => { el.className = 'toast'; }, 4000);
+    }
+
+    const btn = document.getElementById('confirm-cancel');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        btn.disabled = true;
+        btn.textContent = '処理中...';
+        btn.classList.add('is-loading');
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) {
+              showStep('step-done');
+            } else {
+              btn.disabled = false;
+              btn.textContent = 'キャンセルを確定する';
+              btn.classList.remove('is-loading');
+              showToast(res.message);
+            }
+          })
+          .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.textContent = 'キャンセルを確定する';
+            btn.classList.remove('is-loading');
+            showToast('エラー：' + err.message);
+          })
+          .submitCancellation(TOKEN);
+      });
+    }
+  </script>
+</body>
+</html>

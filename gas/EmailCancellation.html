@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: "Hiragino Mincho ProN", "游明朝", YuMincho, serif; color: #2C2824; line-height: 1.8; background: #FAF8F4; margin: 0; padding: 20px; }
+  .wrap { max-width: 560px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E8E2D4; }
+  .header { text-align: center; padding: 32px 20px 20px; border-bottom: 1px solid #E8E2D4; }
+  .store { font-size: 22px; letter-spacing: 0.1em; margin: 0 0 8px; color: #2C2824; }
+  .sub { font-size: 13px; color: #7C6F5A; letter-spacing: 0.1em; margin: 0; }
+  .body { padding: 28px 28px 28px; }
+  .greeting { font-size: 15px; margin: 0 0 20px; }
+  .lead { font-size: 14px; margin: 0 0 24px; }
+  .box { background: #FAF8F4; border-left: 3px solid #A64D48; padding: 16px 20px; margin: 24px 0; }
+  .box-title { font-size: 12px; color: #6B655C; letter-spacing: 0.1em; margin: 0 0 12px; }
+  table.info { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.info td { padding: 6px 0; vertical-align: top; }
+  table.info td.label { width: 90px; color: #6B655C; font-size: 13px; }
+  .footer { text-align: center; padding: 20px; font-size: 11px; color: #6B655C; background: #F0EBE0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1 class="store"><?= storeName ?></h1>
+    <p class="sub">ご予約キャンセル</p>
+  </div>
+
+  <div class="body">
+    <p class="greeting"><?= reservation.name ?> 様</p>
+    <p class="lead">
+      下記のご予約をキャンセルいたしました。<br>
+      またのご来店を心よりお待ちしております。
+    </p>
+
+    <div class="box">
+      <p class="box-title">キャンセルした予約内容</p>
+      <table class="info">
+        <tr><td class="label">ご来店日</td><td><?= formatDateForDisplay(reservation.reservationDate) ?></td></tr>
+        <tr><td class="label">お時間</td><td><?= reservation.slotLabel ?></td></tr>
+        <tr><td class="label">人数</td><td>合計 <?= reservation.totalPeople ?> 名</td></tr>
+        <tr><td class="label">予約番号</td><td><?= reservation.reservationId ?></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    <?= storeName ?>
+  </div>
+</div>
+</body>
+</html>
