@@ -687,12 +687,20 @@ function getHolidaysSheet() {
 }
 
 function initializeHolidaysSheet(sheet) {
-  sheet.getRange(1, 1, 1, 2).setValues([['日付', 'メモ']]);
-  sheet.getRange(1, 1, 1, 2).setFontWeight('bold').setBackground('#f0ebe0');
+  sheet.getRange(1, 1, 1, 3).setValues([['日付', '営業/休業', 'メモ']]);
+  sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#f0ebe0');
   sheet.setFrozenRows(1);
   sheet.getRange(2, 1, sheet.getMaxRows() - 1, 1).setNumberFormat('yyyy-mm-dd');
   sheet.setColumnWidth(1, 120);
-  sheet.setColumnWidth(2, 240);
+  sheet.setColumnWidth(2, 110);
+  sheet.setColumnWidth(3, 240);
+
+  // B列にプルダウン（「営業」or「休み」）を設定
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['営業', '休み'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 2, sheet.getMaxRows() - 1, 1).setDataValidation(rule);
 }
 
 const RESERVATION_HEADERS = [
@@ -832,7 +840,8 @@ function getSlotAvailability(dateStr, slotId) {
 
 /**
  * 指定期間の休業日を集合で返す
- * Holidaysシート A列の日付を読み取る
+ * Holidaysシート（A:日付, B:営業/休業, C:メモ）を読み、
+ * B列が「休み」の行のみを休業日として返す
  */
 function getHolidaySet(startDate, endDate) {
   const set = new Set();
@@ -841,10 +850,14 @@ function getHolidaySet(startDate, endDate) {
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return set;
 
-    const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
     values.forEach(row => {
       const d = row[0];
+      const status = row[1];
+      // 「休み」のみを休業日として扱う（「営業」や空欄は無視）
+      if (status !== '休み') return;
       if (!d) return;
+
       let dateObj = null;
       if (d instanceof Date) {
         dateObj = d;
