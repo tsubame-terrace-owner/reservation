@@ -9,6 +9,7 @@ const CONFIG = {
   SPREADSHEET_ID: '', // ← デプロイ時にスクリプトプロパティで上書き可能
   RESERVATIONS_SHEET: 'Reservations',
   CONFIG_SHEET: 'Config',
+  HOLIDAYS_SHEET: 'Holidays', // 休業日を管理するシート（A列:日付, B列:メモ）
 
   // 営業設定
   SLOTS: [
@@ -20,10 +21,8 @@ const CONFIG = {
   ADMIN_BOOKING_WINDOW_DAYS: 90, // 管理画面で予約可能な日数（今日から何日先まで）
   MIN_BOOKING_DAYS_AHEAD: 1, // 最短何日先から予約可能か（1 = 翌日から、当日不可）
 
-  // カレンダー（Googleカレンダー）
-  HOLIDAY_CALENDAR_ID: '', // 休業日を管理するカレンダーID（未設定なら定休日判定なし）
+  // カレンダー（Googleカレンダー: 予約書き込み用）
   RESERVATION_CALENDAR_ID: '', // 予約を書き込むカレンダーID（未設定なら書き込まない）
-  HOLIDAY_KEYWORDS: ['休業', '定休', '休み', 'CLOSED'], // これらを含むイベントを休業扱い
 
   // メール
   STORE_NAME: '燕テラス',
@@ -677,6 +676,25 @@ function getReservationsSheet() {
   return sheet;
 }
 
+function getHolidaysSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(CONFIG.HOLIDAYS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.HOLIDAYS_SHEET);
+    initializeHolidaysSheet(sheet);
+  }
+  return sheet;
+}
+
+function initializeHolidaysSheet(sheet) {
+  sheet.getRange(1, 1, 1, 2).setValues([['日付', 'メモ']]);
+  sheet.getRange(1, 1, 1, 2).setFontWeight('bold').setBackground('#f0ebe0');
+  sheet.setFrozenRows(1);
+  sheet.getRange(2, 1, sheet.getMaxRows() - 1, 1).setNumberFormat('yyyy-mm-dd');
+  sheet.setColumnWidth(1, 120);
+  sheet.setColumnWidth(2, 240);
+}
+
 const RESERVATION_HEADERS = [
   'reservationId', 'createdAt', 'status', 'reservationDate', 'slot', 'slotLabel',
   'name', 'phone', 'email', 'adults', 'children', 'totalPeople',
@@ -809,39 +827,38 @@ function getSlotAvailability(dateStr, slotId) {
 }
 
 // ===========================================================================
-// Googleカレンダー連携
+// 休業日（Holidaysシートから取得）
 // ===========================================================================
 
 /**
  * 指定期間の休業日を集合で返す
+ * Holidaysシート A列の日付を読み取る
  */
 function getHolidaySet(startDate, endDate) {
   const set = new Set();
-  const calId = PropertiesService.getScriptProperties().getProperty('HOLIDAY_CALENDAR_ID') || CONFIG.HOLIDAY_CALENDAR_ID;
-  if (!calId) return set;
   try {
-    const cal = CalendarApp.getCalendarById(calId);
-    if (!cal) return set;
-    // 終了日の翌日まで取得（終日イベント対応）
-    const endPlus = new Date(endDate);
-    endPlus.setDate(endPlus.getDate() + 1);
-    const events = cal.getEvents(startDate, endPlus);
-    events.forEach(ev => {
-      const title = ev.getTitle() || '';
-      const isHolidayEvent = CONFIG.HOLIDAY_KEYWORDS.some(kw => title.indexOf(kw) !== -1);
-      if (!isHolidayEvent) return;
-      // イベントがカバーする全ての日付を登録
-      const start = ev.getStartTime();
-      const end = ev.getEndTime();
-      const cursor = new Date(start);
-      cursor.setHours(0, 0, 0, 0);
-      const endCursor = new Date(end);
-      // 終日イベントは end が翌日0時になる仕様なので1日戻す
-      if (ev.isAllDayEvent()) endCursor.setDate(endCursor.getDate() - 1);
-      endCursor.setHours(0, 0, 0, 0);
-      while (cursor <= endCursor) {
-        set.add(formatDate(cursor));
-        cursor.setDate(cursor.getDate() + 1);
+    const sheet = getHolidaysSheet();
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return set;
+
+    const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    values.forEach(row => {
+      const d = row[0];
+      if (!d) return;
+      let dateObj = null;
+      if (d instanceof Date) {
+        dateObj = d;
+      } else if (typeof d === 'string' && d.trim()) {
+        // 'YYYY-MM-DD' or 'YYYY/MM/DD' を許容
+        const parts = d.replace(/\//g, '-').split('-').map(Number);
+        if (parts.length === 3 && parts.every(n => Number.isFinite(n))) {
+          dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+      }
+      if (!dateObj) return;
+      const normalized = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      if (normalized >= startDate && normalized <= endDate) {
+        set.add(formatDate(normalized));
       }
     });
   } catch (e) {
@@ -1078,7 +1095,6 @@ function setupScriptProperties() {
   const props = PropertiesService.getScriptProperties();
   props.setProperties({
     SPREADSHEET_ID: 'ここにスプレッドシートIDを入れる',
-    HOLIDAY_CALENDAR_ID: 'ここに休業日管理用のGoogleカレンダーIDを入れる',
     RESERVATION_CALENDAR_ID: 'ここに予約を書き込む用のGoogleカレンダーIDを入れる',
     MAP_IMAGE_DRIVE_ID: 'ここに道のり案内画像のGoogleドライブファイルIDを入れる',
   });
