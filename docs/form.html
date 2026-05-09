@@ -201,21 +201,38 @@
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    // 'YYYY-MM-DD' 文字列をローカル時刻のDateに変換
+    function parseLocalDate(s) {
+      const parts = String(s).split('-').map(Number);
+      return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
     // ===== 初期化 =====
-    function loadConfigAndAvailability() {
-      // CONFIG を取得（slots/capacity 等を最新化）
-      callApi('getConfig').then(res => {
-        if (res && res.success && res.config) {
-          CONFIG = Object.assign(CONFIG, res.config);
-          document.getElementById('capacity-note').textContent = CONFIG.capacity;
+    // CONFIG と availability を1コールで取得（getInitialData で往復削減）
+    function loadInitialData() {
+      callApi('getInitialData').then(res => {
+        if (res && res.success) {
+          if (res.config) {
+            CONFIG = Object.assign(CONFIG, res.config);
+            document.getElementById('capacity-note').textContent = CONFIG.capacity;
+          }
+          if (res.availability && res.dateRange) {
+            state.availability = res.availability;
+            const start = parseLocalDate(res.dateRange.start);
+            const end = parseLocalDate(res.dateRange.end);
+            renderCalendar(start, end);
+            return;
+          }
         }
-        loadAvailability();
+        document.getElementById('calendar').innerHTML =
+          '<p class="error">空き状況の取得に失敗しました。再読み込みしてください。</p>';
       }).catch(() => {
-        // CONFIG 取得失敗してもデフォルトで進める
-        loadAvailability();
+        document.getElementById('calendar').innerHTML =
+          '<p class="error">空き状況の取得に失敗しました。再読み込みしてください。</p>';
       });
     }
 
+    // 予約失敗後の再取得用
     function loadAvailability() {
       const today = new Date();
       const start = new Date(today);
@@ -450,7 +467,7 @@
     });
 
     // ===== 初期表示 =====
-    loadConfigAndAvailability();
+    loadInitialData();
   </script>
 </body>
 </html>

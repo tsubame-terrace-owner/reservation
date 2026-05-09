@@ -202,6 +202,30 @@ function doPost(e) {
         };
         break;
 
+      case 'getInitialData': {
+        // フォーム初回ロード用：config と availability を1回で返す（往復削減）
+        const today = new Date();
+        const start = new Date(today);
+        start.setDate(start.getDate() + CONFIG.MIN_BOOKING_DAYS_AHEAD);
+        const end = new Date(today);
+        end.setDate(end.getDate() + CONFIG.BOOKING_WINDOW_DAYS);
+        const startStr = formatDate(start);
+        const endStr = formatDate(end);
+        result = {
+          success: true,
+          config: {
+            slots: CONFIG.SLOTS.map(s => ({ id: s.id, label: s.label })),
+            capacity: CONFIG.CAPACITY_PER_SLOT,
+            bookingWindowDays: CONFIG.BOOKING_WINDOW_DAYS,
+            minDaysAhead: CONFIG.MIN_BOOKING_DAYS_AHEAD,
+            storeName: CONFIG.STORE_NAME,
+          },
+          dateRange: { start: startStr, end: endStr },
+          availability: getAvailabilityRange(startStr, endStr),
+        };
+        break;
+      }
+
       case 'submitReservation':
         result = submitReservation(data.formData || {});
         break;
