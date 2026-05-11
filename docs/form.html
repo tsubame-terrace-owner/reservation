@@ -457,6 +457,14 @@
           btn.textContent = 'この内容で予約する';
           btn.classList.remove('is-loading');
           if (res && res.success) {
+            // GA4: 予約完了イベント送信
+            if (typeof gtag === 'function') {
+              gtag('event', 'reservation_completed', {
+                reservation_id: res.reservationId || '',
+                people: (state.form.adults || 0) + (state.form.children || 0),
+                slot: state.form.slot || '',
+              });
+            }
             document.getElementById('complete-content').innerHTML =
               document.getElementById('confirm-content').innerHTML;
             showStep('step-complete');
