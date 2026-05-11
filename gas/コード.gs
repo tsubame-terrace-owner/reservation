@@ -24,6 +24,9 @@ const CONFIG = {
   // カレンダー（Googleカレンダー: 予約書き込み用）
   RESERVATION_CALENDAR_ID: '', // 予約を書き込むカレンダーID（未設定なら書き込まない）
 
+  // フロントエンド（GitHub Pages）
+  FRONTEND_BASE_URL: 'https://tsubame-terrace-owner.github.io/tsubame-terrace',
+
   // メール
   STORE_NAME: '燕テラス',
   STORE_EMAIL_FROM_NAME: '燕テラス',
@@ -228,6 +231,58 @@ function doPost(e) {
 
       case 'submitReservation':
         result = submitReservation(data.formData || {});
+        break;
+
+      case 'findReservation': {
+        const r = findReservationByToken(data.token);
+        if (!r) {
+          result = { success: false, message: '予約情報が見つかりません。' };
+        } else {
+          result = { success: true, reservation: r };
+        }
+        break;
+      }
+
+      case 'getChangeInitialData': {
+        // 変更ページ初回ロード用：reservation + config + availability を1回で返す
+        const r = findReservationByToken(data.token);
+        if (!r) {
+          result = { success: false, message: '予約情報が見つかりません。' };
+          break;
+        }
+        if (r.status !== STATUS.CONFIRMED) {
+          result = { success: false, message: 'この予約はすでに無効です。', reservation: r };
+          break;
+        }
+        const today_c = new Date();
+        const start_c = new Date(today_c);
+        start_c.setDate(start_c.getDate() + CONFIG.MIN_BOOKING_DAYS_AHEAD);
+        const end_c = new Date(today_c);
+        end_c.setDate(end_c.getDate() + CONFIG.BOOKING_WINDOW_DAYS);
+        const startStr_c = formatDate(start_c);
+        const endStr_c = formatDate(end_c);
+        result = {
+          success: true,
+          reservation: r,
+          config: {
+            slots: CONFIG.SLOTS.map(s => ({ id: s.id, label: s.label })),
+            capacity: CONFIG.CAPACITY_PER_SLOT,
+            bookingWindowDays: CONFIG.BOOKING_WINDOW_DAYS,
+            minDaysAhead: CONFIG.MIN_BOOKING_DAYS_AHEAD,
+            storeName: CONFIG.STORE_NAME,
+          },
+          dateRange: { start: startStr_c, end: endStr_c },
+          availability: getAvailabilityRange(startStr_c, endStr_c),
+        };
+        break;
+      }
+
+      case 'submitCancellation':
+        result = submitCancellation(data.token);
+        break;
+
+      case 'submitChange':
+        result = submitChange(data.token, data.formData || {});
         break;
 
       default:
@@ -946,13 +1001,13 @@ function getWebAppUrl() {
 }
 
 function buildCancelUrl(token) {
-  const base = getWebAppUrl();
-  return `${base}?page=cancel&token=${encodeURIComponent(token)}`;
+  // GitHub Pages 上のキャンセルページへ
+  return `${CONFIG.FRONTEND_BASE_URL}/cancel.html?token=${encodeURIComponent(token)}`;
 }
 
 function buildChangeUrl(token) {
-  const base = getWebAppUrl();
-  return `${base}?page=change&token=${encodeURIComponent(token)}`;
+  // GitHub Pages 上の変更ページへ
+  return `${CONFIG.FRONTEND_BASE_URL}/change.html?token=${encodeURIComponent(token)}`;
 }
 
 function sendConfirmationEmail(reservation) {

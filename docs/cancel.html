@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>燕テラス ご予約キャンセル</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .btn-danger {
+      flex: 1;
+      min-width: 140px;
+      padding: 16px 20px;
+      background: var(--error);
+      color: white;
+      border: 1px solid var(--error);
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 16px;
+      letter-spacing: 0.05em;
+      transition: all 0.15s;
+    }
+    .btn-danger:hover:not(:disabled) { background: #8B3E3A; border-color: #8B3E3A; }
+    .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-danger.is-loading {
+      position: relative; padding-right: 44px; pointer-events: none;
+    }
+    .btn-danger.is-loading::after {
+      content: ''; position: absolute; right: 14px; top: 0; bottom: 0; margin: auto;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.35); border-top-color: white;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    .error-page { text-align: center; padding: 40px 20px; }
+    .error-icon { font-size: 48px; color: var(--error); margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="store-name">燕テラス</h1>
+      <p class="subtitle">ご予約のキャンセル</p>
+    </header>
+
+    <main id="app">
+      <div class="loading">読み込んでいます...</div>
+    </main>
+
+    <footer class="footer">
+      <p>&copy; 燕テラス</p>
+    </footer>
+  </div>
+
+  <div id="error-toast" class="toast"></div>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwGknTdmReT2qDHp_PrdF_u9MMZoWSbEBU8IMcLanTks-EDiDYxj1obttPRbokiue84/exec';
+    const TOKEN = new URLSearchParams(location.search).get('token') || '';
+
+    function callApi(action, payload) {
+      const body = new URLSearchParams({
+        data: JSON.stringify(Object.assign({ action: action }, payload || {})),
+      });
+      return fetch(GAS_URL, { method: 'POST', body: body }).then(r => r.json());
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('error-toast');
+      el.textContent = msg;
+      el.className = 'toast show error';
+      setTimeout(() => { el.className = 'toast'; }, 4000);
+    }
+
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function formatDateJa(dateStr) {
+      const [y, m, d] = String(dateStr).split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      const wd = ['日','月','火','水','木','金','土'][date.getDay()];
+      return y + '年' + m + '月' + d + '日(' + wd + ')';
+    }
+
+    function renderError(title, msg) {
+      document.getElementById('app').innerHTML =
+        '<div class="error-page"><div class="error-icon">！</div>' +
+        '<h2>' + escapeHtml(title) + '</h2>' +
+        '<p>' + escapeHtml(msg) + '</p></div>';
+    }
+
+    function renderConfirm(reservation) {
+      const app = document.getElementById('app');
+      app.innerHTML =
+        '<section class="step active">' +
+          '<h2 class="step-title">以下のご予約をキャンセルします</h2>' +
+          '<div class="confirm-box">' +
+            '<dl class="confirm-dl">' +
+              '<dt>ご来店日</dt><dd>' + formatDateJa(reservation.reservationDate) + '</dd>' +
+              '<dt>お時間</dt><dd>' + escapeHtml(reservation.slotLabel) + '</dd>' +
+              '<dt>人数</dt><dd>合計 ' + reservation.totalPeople + ' 名</dd>' +
+              '<dt>お名前</dt><dd>' + escapeHtml(reservation.name) + ' 様</dd>' +
+            '</dl>' +
+          '</div>' +
+          '<p class="guide" style="margin-top:24px; text-align:center;">' +
+            'キャンセル後は元に戻せません。よろしければ下のボタンを押してください。' +
+          '</p>' +
+          '<div class="button-row">' +
+            '<button type="button" class="btn-danger" id="confirm-cancel" style="flex:1;">キャンセルを確定する</button>' +
+          '</div>' +
+        '</section>';
+
+      document.getElementById('confirm-cancel').addEventListener('click', onCancelClick);
+    }
+
+    function renderDone() {
+      document.getElementById('app').innerHTML =
+        '<div class="complete-box">' +
+          '<div class="check-icon">✓</div>' +
+          '<h2>キャンセルを承りました</h2>' +
+          '<p>ご登録のメールアドレスに確認メールをお送りしています。<br>' +
+          'またのご来店を心よりお待ちしております。</p>' +
+          '<div style="text-align:center; margin-top:24px;">' +
+            '<button type="button" class="btn-secondary" onclick="location.href=\'./\'">← トップに戻る</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function onCancelClick() {
+      const btn = document.getElementById('confirm-cancel');
+      btn.disabled = true;
+      btn.textContent = '処理中...';
+      btn.classList.add('is-loading');
+
+      callApi('submitCancellation', { token: TOKEN }).then(res => {
+        if (res && res.success) {
+          renderDone();
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'キャンセルを確定する';
+          btn.classList.remove('is-loading');
+          showToast((res && res.message) || 'エラーが発生しました');
+        }
+      }).catch(err => {
+        btn.disabled = false;
+        btn.textContent = 'キャンセルを確定する';
+        btn.classList.remove('is-loading');
+        showToast('エラー：' + err.message);
+      });
+    }
+
+    // 初期化：予約情報取得
+    if (!TOKEN) {
+      renderError('予約情報が見つかりません', 'リンクが正しくないか、すでに処理済みの可能性があります。');
+    } else {
+      callApi('findReservation', { token: TOKEN }).then(res => {
+        if (!res || !res.success || !res.reservation) {
+          renderError('予約情報が見つかりません', 'リンクが正しくないか、すでに処理済みの可能性があります。');
+          return;
+        }
+        if (res.reservation.status !== 'confirmed') {
+          renderError('この予約はすでに無効です', 'すでにキャンセル済み、または内容変更により無効化されています。');
+          return;
+        }
+        renderConfirm(res.reservation);
+      }).catch(() => {
+        renderError('読み込みに失敗しました', '時間をおいて再度お試しください。');
+      });
+    }
+  </script>
+</body>
+</html>
