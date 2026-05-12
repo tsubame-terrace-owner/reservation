@@ -340,6 +340,14 @@
       state.selectedDate = dateStr;
       state.selectedSlot = slotId;
 
+      // GA4: 日時選択イベント
+      if (typeof gtag === 'function') {
+        gtag('event', 'slot_selected', {
+          date: dateStr,
+          slot: slotId,
+        });
+      }
+
       document.getElementById('selected-slot-display').innerHTML =
         '<div class="selected-inner">' +
           '<span class="selected-date">' + formatDateJa(dateStr) + '</span>' +
