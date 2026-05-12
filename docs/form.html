@@ -432,6 +432,15 @@
         notes: document.getElementById('notes').value.trim(),
       };
 
+      // GA4: 確認画面到達イベント（バリデーション通過＆情報入力完了）
+      if (typeof gtag === 'function') {
+        gtag('event', 'confirm_reached', {
+          date: state.form.reservationDate,
+          slot: state.form.slot,
+          people: state.form.adults + state.form.children,
+        });
+      }
+
       renderConfirm();
       showStep('step-confirm');
     });
