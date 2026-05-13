@@ -512,6 +512,26 @@
         });
     });
 
+    // ===== GA4: フォーム各フィールド入力完了の中間イベント =====
+    // 各フィールドに初めて値が入った時に1回だけ field_completed を送信
+    (function () {
+      const reportedFields = new Set();
+      const fields = ['name', 'phone', 'email', 'source', 'notes'];
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', function () {
+          if (reportedFields.has(id)) return;
+          const val = (el.value || '').toString().trim();
+          if (!val) return;
+          reportedFields.add(id);
+          if (typeof gtag === 'function') {
+            gtag('event', 'field_completed', { field: id });
+          }
+        });
+      });
+    })();
+
     // ===== 初期表示 =====
     loadInitialData();
   </script>
