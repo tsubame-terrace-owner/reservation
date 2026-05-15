@@ -17,7 +17,7 @@ const CONFIG = {
     { id: 'slot2', label: '13:00〜', startHour: 13, startMinute: 0, endHour: 14, endMinute: 30 },
   ],
   CAPACITY_PER_SLOT: 12,
-  BOOKING_WINDOW_DAYS: 14, // お客様が予約可能な日数（今日から何日先まで）
+  BOOKING_WINDOW_DAYS: 30, // お客様が予約可能な日数（今日から何日先まで）
   ADMIN_BOOKING_WINDOW_DAYS: 90, // 管理画面で予約可能な日数（今日から何日先まで）
   MIN_BOOKING_DAYS_AHEAD: 1, // 最短何日先から予約可能か（1 = 翌日から、当日不可）
 
