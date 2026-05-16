@@ -69,52 +69,35 @@
 
   <div class="body">
     <p class="greeting"><?= reservation.name ?> 様</p>
+
     <p class="lead">
-      本日は<?= storeName ?>にお越しいただき、誠にありがとうございました。<br>
-      お楽しみいただけましたでしょうか。
+      本日は<?= storeName ?>にお越しいただき、誠にありがとうございました。
+    </p>
+
+    <p class="lead">
+      お料理やお時間はいかがでしたでしょうか。<br>
+      良かったところはもちろん、「もう少しこうだったら」と感じられた点も、ぜひお聞かせいただけますと、よりよいお店づくりの励みになります。
     </p>
 
     <div class="review-box">
-      <p class="review-box-title">＜ご感想をお聞かせください＞</p>
+      <p class="review-box-title">＜口コミ・Instagramフォローで応援を＞</p>
       <p class="review-box-text">
-        よろしければGoogleでご感想を<br>
-        お寄せいただけますと大変励みになります。
+        よろしければGoogleでの口コミや<br>
+        Instagramのフォローで応援いただけますと幸いです。
       </p>
       <div class="btn-area">
         <a href="<?= googleReviewUrl ?>" class="btn">Googleで口コミを書く</a>
       </div>
       <p class="note">30秒ほどで投稿できます</p>
-    </div>
-
-    <p class="lead" style="text-align:center; margin-top:24px;">
-      Instagramのフォローもお待ちしております
-    </p>
-    <div class="btn-area">
-      <a href="https://www.instagram.com/tsubame_terrace" class="btn btn-outline">Instagramを見る（@tsubame_terrace）</a>
+      <div class="btn-area" style="margin-top:16px;">
+        <a href="https://www.instagram.com/tsubame_terrace" class="btn btn-outline">Instagramを見る（@tsubame_terrace）</a>
+      </div>
     </div>
 
     <p class="closing">
       またのご来店を心よりお待ちしております。<br>
       ご不明な点がございましたら、このメールにご返信ください。
     </p>
-
-    <div class="access">
-      <p class="access-title">＜店舗情報＞</p>
-      <table>
-        <tr>
-          <td class="lbl">〇 住所</td>
-          <td>〒639-2146<br>奈良県葛城市中戸411-1<br>燕さんじょう亭 外蔵</td>
-        </tr>
-        <tr>
-          <td class="lbl">〇 地図</td>
-          <td><a href="https://maps.app.goo.gl/BJhfWoViGTUfWcYj9">Google マップで見る</a></td>
-        </tr>
-        <tr>
-          <td class="lbl">〇 Instagram</td>
-          <td><a href="https://www.instagram.com/tsubame_terrace">@tsubame_terrace</a></td>
-        </tr>
-      </table>
-    </div>
   </div>
 
   <div class="footer">
