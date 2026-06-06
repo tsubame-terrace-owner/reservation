@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  body { font-family: "Hiragino Mincho ProN", "游明朝", YuMincho, serif; color: #2C2824; line-height: 1.8; background: #FAF8F4; margin: 0; padding: 20px; }
+  body { color: #2C2824; line-height: 1.8; background: #FAF8F4; margin: 0; padding: 20px; }
+  .wrap, .wrap p, .wrap h1, .wrap td, .wrap a, .wrap div { font-family: "Hiragino Mincho ProN", "游明朝", YuMincho, serif; }
   .wrap { max-width: 560px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E8E2D4; }
   .header { text-align: center; padding: 32px 20px 20px; border-bottom: 1px solid #E8E2D4; }
   .store { font-size: 22px; letter-spacing: 0.1em; margin: 0 0 8px; color: #2C2824; }
@@ -76,14 +77,6 @@
       </p>
     </div>
 
-    <p style="font-size:14px; margin:20px 0 4px;">
-      ご都合が変わられた場合はこちらから変更・キャンセルをお願いいたします。
-    </p>
-
-    <div class="btn-area">
-      <a href="<?= changeUrl ?>" class="btn btn-outline">予約内容を変更する</a>
-      <a href="<?= cancelUrl ?>" class="btn">キャンセルする</a>
-    </div>
   </div>
 
   <div class="footer">

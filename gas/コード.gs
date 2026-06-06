@@ -25,7 +25,7 @@ const CONFIG = {
   RESERVATION_CALENDAR_ID: '', // 予約を書き込むカレンダーID（未設定なら書き込まない）
 
   // フロントエンド（GitHub Pages）
-  FRONTEND_BASE_URL: 'https://tsubame-terrace-owner.github.io/tsubame-terrace',
+  FRONTEND_BASE_URL: 'https://tsubame-terrace-owner.github.io/reservation',
 
   // メール
   STORE_NAME: '燕テラス',
@@ -36,6 +36,11 @@ const CONFIG = {
   REMINDER_HOUR_TOMORROW: 19,   // 前日リマインドの送信時刻（翌日の予約が対象）
   REMINDER_HOUR_TODAY: 8,       // 当日リマインドの送信時刻・時（前日に取りこぼした当日予約のフォロー）
   REMINDER_MINUTE_TODAY: 30,    // 当日リマインドの送信時刻・分（GASの仕様で±15分の誤差あり）
+  THANKYOU_HOUR: 18,            // サンクスメールの送信時刻・時（来店当日）
+  THANKYOU_MINUTE: 30,          // サンクスメールの送信時刻・分（GASの仕様で±15分の誤差あり）
+
+  // クチコミ依頼リンク
+  GOOGLE_REVIEW_URL: 'https://g.page/r/CSJC8RVJ5JzxEAE/review',
 
   // タイムゾーン
   TIMEZONE: 'Asia/Tokyo',
@@ -785,7 +790,7 @@ function initializeHolidaysSheet(sheet) {
 const RESERVATION_HEADERS = [
   'reservationId', 'createdAt', 'status', 'reservationDate', 'slot', 'slotLabel',
   'name', 'phone', 'email', 'adults', 'children', 'totalPeople',
-  'source', 'notes', 'cancelToken', 'reminderSent', 'calendarEventId', 'updatedAt'
+  'source', 'notes', 'cancelToken', 'reminderSent', 'calendarEventId', 'updatedAt', 'thankYouSent'
 ];
 
 function initializeReservationsSheet(sheet) {
@@ -877,6 +882,7 @@ function writeReservation(data, totalPeople) {
     reminderSent: false,
     calendarEventId: '',
     updatedAt: now,
+    thankYouSent: false,
   };
 
   const row = RESERVATION_HEADERS.map(h => reservation[h]);
@@ -1093,6 +1099,22 @@ function sendChangeCompletedEmail(oldReservation, newReservation) {
   });
 }
 
+function sendThankYouEmail(reservation) {
+  const subject = `【${CONFIG.STORE_NAME}】本日はご来店ありがとうございました`;
+  const body = renderEmailBody('EmailThankYou', {
+    reservation: reservation,
+    googleReviewUrl: CONFIG.GOOGLE_REVIEW_URL,
+    storeName: CONFIG.STORE_NAME,
+  });
+  MailApp.sendEmail({
+    to: reservation.email,
+    subject: subject,
+    htmlBody: body,
+    name: CONFIG.STORE_EMAIL_FROM_NAME,
+    replyTo: CONFIG.STORE_REPLY_EMAIL,
+  });
+}
+
 function renderEmailBody(templateName, data) {
   const tpl = HtmlService.createTemplateFromFile(templateName);
   Object.keys(data).forEach(k => {
@@ -1176,6 +1198,35 @@ function sendRemindersForOffset(dayOffset, isToday) {
   console.log(`Reminders (${isToday ? 'today' : 'tomorrow'}): sent=${sent} failed=${failed} target=${targetStr}`);
 }
 
+/**
+ * サンクスメール送信（来店当日 18:30 トリガーで実行）
+ * 当日来店分の予約に対して、お礼＋クチコミ依頼メールを送る。
+ * メアド未入力の手動予約は対象外。
+ */
+function sendThankYouEmails() {
+  const todayStr = formatDate(new Date());
+  const reservations = getAllActiveReservations();
+  const targets = reservations.filter(r =>
+    r.reservationDate === todayStr &&
+    !r.thankYouSent &&
+    r.email && isValidEmail(r.email)
+  );
+
+  let sent = 0;
+  let failed = 0;
+  targets.forEach(r => {
+    try {
+      sendThankYouEmail(r);
+      updateReservationField(r.reservationId, 'thankYouSent', true);
+      sent++;
+    } catch (e) {
+      console.error(`Thank-you failed for ${r.reservationId}:`, e);
+      failed++;
+    }
+  });
+  console.log(`Thank-you mails: sent=${sent} failed=${failed} target=${todayStr}`);
+}
+
 // ===========================================================================
 // 初期セットアップ用の関数（手動実行）
 // ===========================================================================
@@ -1224,6 +1275,61 @@ function installReminderTriggers() {
     .create();
 
   console.log(`Reminder triggers installed: tomorrow=${CONFIG.REMINDER_HOUR_TOMORROW}:00, today=${CONFIG.REMINDER_HOUR_TODAY}:${CONFIG.REMINDER_MINUTE_TODAY}`);
+}
+
+/**
+ * サンクスメール用のトリガーを作成（一度だけ手動実行）
+ * 来店当日 18:30 に当日分の予約へ送る。
+ */
+function installThankYouTrigger() {
+  // 既存のサンクスメール系トリガーを削除
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'sendThankYouEmails') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  ScriptApp.newTrigger('sendThankYouEmails')
+    .timeBased()
+    .atHour(CONFIG.THANKYOU_HOUR)
+    .nearMinute(CONFIG.THANKYOU_MINUTE)
+    .everyDays(1)
+    .inTimezone(CONFIG.TIMEZONE)
+    .create();
+
+  console.log(`Thank-you trigger installed: ${CONFIG.THANKYOU_HOUR}:${CONFIG.THANKYOU_MINUTE}`);
+}
+
+/**
+ * 既存の Reservations シートにヘッダ列を追加する（既存運用中シートのマイグレーション用）
+ * RESERVATION_HEADERS に列を増やした後に一度だけ手動実行する。
+ * - 末尾列の追加のみを想定（途中への挿入は手動対応が必要）
+ * - データはそのまま、ヘッダ行のみ拡張する
+ */
+function ensureReservationHeaders() {
+  const sheet = getReservationsSheet();
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) {
+    initializeReservationsSheet(sheet);
+    console.log('Sheet initialized from scratch.');
+    return;
+  }
+  if (lastCol >= RESERVATION_HEADERS.length) {
+    // 念のため既存ヘッダ名が定義と一致しているかチェック
+    const current = sheet.getRange(1, 1, 1, RESERVATION_HEADERS.length).getValues()[0];
+    const diff = RESERVATION_HEADERS.filter((h, i) => current[i] !== h);
+    if (diff.length === 0) {
+      console.log('Headers already up to date.');
+    } else {
+      console.warn('Header mismatch detected:', diff);
+    }
+    return;
+  }
+  // 不足分を末尾に追加
+  const missing = RESERVATION_HEADERS.slice(lastCol);
+  sheet.getRange(1, lastCol + 1, 1, missing.length).setValues([missing])
+    .setFontWeight('bold').setBackground('#f0ebe0');
+  console.log(`Headers extended: added ${missing.join(', ')}`);
 }
 
 /**
