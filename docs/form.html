@@ -182,6 +182,19 @@
         .then(res => res.json());
     }
 
+    // 読み込み系（idempotent）専用: ネットワーク失敗時に最大2回までリトライ。
+    // GAS コールドスタート / リダイレクト直後の flaky な fetch を吸収する。
+    function callApiRetry(action, payload, attempts) {
+      if (attempts == null) attempts = 2;
+      return callApi(action, payload).catch(function (err) {
+        if (attempts > 0) {
+          return new Promise(function (r) { setTimeout(r, 500); })
+            .then(function () { return callApiRetry(action, payload, attempts - 1); });
+        }
+        throw err;
+      });
+    }
+
     // ===== ユーティリティ =====
     function showStep(id) {
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
@@ -231,7 +244,7 @@
     // ===== 初期化 =====
     // CONFIG と availability を1コールで取得（getInitialData で往復削減）
     function loadInitialData() {
-      callApi('getInitialData').then(res => {
+      callApiRetry('getInitialData').then(res => {
         if (res && res.success) {
           if (res.config) {
             CONFIG = Object.assign(CONFIG, res.config);
@@ -261,7 +274,7 @@
       const end = new Date(today);
       end.setDate(end.getDate() + CONFIG.bookingWindowDays);
 
-      callApi('getAvailability', {
+      callApiRetry('getAvailability', {
         startDate: formatDate(start),
         endDate: formatDate(end),
       }).then(res => {

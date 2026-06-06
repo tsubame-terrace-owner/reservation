@@ -66,6 +66,19 @@
       return fetch(GAS_URL, { method: 'POST', body: body }).then(r => r.json());
     }
 
+    // 読み込み系（idempotent）専用: ネットワーク失敗時に最大2回までリトライ。
+    // GAS コールドスタート / リダイレクト直後の flaky な fetch を吸収する。
+    function callApiRetry(action, payload, attempts) {
+      if (attempts == null) attempts = 2;
+      return callApi(action, payload).catch(function (err) {
+        if (attempts > 0) {
+          return new Promise(function (r) { setTimeout(r, 500); })
+            .then(function () { return callApiRetry(action, payload, attempts - 1); });
+        }
+        throw err;
+      });
+    }
+
     function showStep(id) {
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
       const el = document.getElementById(id);
@@ -387,7 +400,7 @@
     if (!TOKEN) {
       renderError('予約情報が見つかりません', 'リンクが正しくないか、すでに処理済みの可能性があります。');
     } else {
-      callApi('getChangeInitialData', { token: TOKEN }).then(res => {
+      callApiRetry('getChangeInitialData', { token: TOKEN }).then(res => {
         if (!res || !res.success || !res.reservation) {
           if (res && res.reservation && res.reservation.status !== 'confirmed') {
             renderError('この予約はすでに無効です', 'すでにキャンセル済み、または内容変更により無効化されています。');
