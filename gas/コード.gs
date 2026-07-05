@@ -371,7 +371,7 @@ function submitReservation(data) {
     }
 
     // 空き判定
-    const totalPeople = Number(data.adults) + Number(data.children || 0);
+    const totalPeople = Number(data.adults) + extractChildCounts(data).children;
     const availability = getSlotAvailability(data.reservationDate, data.slot);
     if (availability.isHoliday) {
       return { success: false, message: 'この日は休業日です。別の日をお選びください。' };
@@ -504,7 +504,7 @@ function submitChange(token, newData) {
       return { success: false, message: validation.message };
     }
 
-    const newTotalPeople = Number(newData.adults) + Number(newData.children || 0);
+    const newTotalPeople = Number(newData.adults) + extractChildCounts(newData).children;
 
     // 空き判定（ただし自分の旧予約分は差し引く）
     const sameSlot = (oldReservation.reservationDate === newData.reservationDate &&
@@ -604,7 +604,7 @@ function submitManualReservation(data, token) {
       return { success: false, message: validation.message };
     }
 
-    const totalPeople = Number(data.adults) + Number(data.children || 0);
+    const totalPeople = Number(data.adults) + extractChildCounts(data).children;
     const availability = getSlotAvailability(data.reservationDate, data.slot);
     if (availability.isHoliday) {
       return { success: false, message: 'この日は休業日として登録されています。' };
@@ -669,7 +669,7 @@ function validateReservationData(data) {
   if (!data.phone || !data.phone.trim()) return { ok: false, message: '電話番号を入力してください。' };
 
   const adults = Number(data.adults);
-  const children = Number(data.children || 0);
+  const children = extractChildCounts(data).children;
   if (!Number.isFinite(adults) || adults < 1) return { ok: false, message: '大人の人数は1名以上必要です。' };
   if (!Number.isFinite(children) || children < 0) return { ok: false, message: 'お子様の人数が不正です。' };
   const total = adults + children;
@@ -717,7 +717,7 @@ function validateManualReservationData(data) {
   }
 
   const adults = Number(data.adults);
-  const children = Number(data.children || 0);
+  const children = extractChildCounts(data).children;
   if (!Number.isFinite(adults) || adults < 1) return { ok: false, message: '大人の人数は1名以上必要です。' };
   if (!Number.isFinite(children) || children < 0) return { ok: false, message: 'お子様の人数が不正です。' };
   const total = adults + children;
@@ -790,7 +790,8 @@ function initializeHolidaysSheet(sheet) {
 const RESERVATION_HEADERS = [
   'reservationId', 'createdAt', 'status', 'reservationDate', 'slot', 'slotLabel',
   'name', 'phone', 'email', 'adults', 'children', 'totalPeople',
-  'source', 'notes', 'cancelToken', 'reminderSent', 'calendarEventId', 'updatedAt', 'thankYouSent'
+  'source', 'notes', 'cancelToken', 'reminderSent', 'calendarEventId', 'updatedAt', 'thankYouSent',
+  'schoolChildren', 'preschoolChildren'
 ];
 
 function initializeReservationsSheet(sheet) {
@@ -827,6 +828,9 @@ function rowToReservation(row) {
   r.adults = Number(r.adults) || 0;
   r.children = Number(r.children) || 0;
   r.totalPeople = Number(r.totalPeople) || (r.adults + r.children);
+  // 子ども内訳（旧データは空欄＝不明のまま保持）
+  r.schoolChildren = (r.schoolChildren === '' || r.schoolChildren == null) ? '' : (Number(r.schoolChildren) || 0);
+  r.preschoolChildren = (r.preschoolChildren === '' || r.preschoolChildren == null) ? '' : (Number(r.preschoolChildren) || 0);
   return r;
 }
 
@@ -856,12 +860,31 @@ function findRowIndexByReservationId(reservationId) {
   return -1;
 }
 
+/**
+ * 子どもの人数を新旧ペイロード両対応で取り出す。
+ * 新フォーム: schoolChildren(小学生以上) / preschoolChildren(未就学) を送信
+ * 旧フォーム: children(子ども合計)のみ
+ * children は常に「子ども合計」を表す（既存 children 列の意味を維持）。
+ * 内訳が無い（旧フォーム）場合、school/pre は空欄('')＝不明として保存。
+ */
+function extractChildCounts(data) {
+  const hasBreakdown = (data.schoolChildren != null && data.schoolChildren !== '') ||
+                       (data.preschoolChildren != null && data.preschoolChildren !== '');
+  if (hasBreakdown) {
+    const school = Math.max(0, Number(data.schoolChildren) || 0);
+    const pre = Math.max(0, Number(data.preschoolChildren) || 0);
+    return { school: school, pre: pre, children: school + pre, hasBreakdown: true };
+  }
+  return { school: '', pre: '', children: Math.max(0, Number(data.children) || 0), hasBreakdown: false };
+}
+
 function writeReservation(data, totalPeople) {
   const sheet = getReservationsSheet();
   const reservationId = generateId('R');
   const cancelToken = generateToken();
   const slotDef = CONFIG.SLOTS.find(s => s.id === data.slot);
   const now = new Date();
+  const cc = extractChildCounts(data);
 
   const reservation = {
     reservationId: reservationId,
@@ -874,7 +897,9 @@ function writeReservation(data, totalPeople) {
     phone: (data.phone || '').trim(),
     email: (data.email || '').trim(),
     adults: Number(data.adults),
-    children: Number(data.children || 0),
+    children: cc.children,
+    schoolChildren: cc.school,
+    preschoolChildren: cc.pre,
     totalPeople: totalPeople,
     source: (data.source || '').trim(),
     notes: (data.notes || '').trim(),
@@ -977,7 +1002,12 @@ function createCalendarEvent(reservation) {
   const start = new Date(y, m - 1, d, slotDef.startHour, slotDef.startMinute);
   const end = new Date(y, m - 1, d, slotDef.endHour, slotDef.endMinute);
 
-  const title = `【予約】${reservation.name}様 ${reservation.totalPeople}名（大人${reservation.adults}・子供${reservation.children}）`;
+  const _hasBreakdown = (reservation.schoolChildren !== '' && reservation.schoolChildren != null) ||
+                        (reservation.preschoolChildren !== '' && reservation.preschoolChildren != null);
+  const _childInfo = _hasBreakdown
+    ? `子供${reservation.children}（小学生以上${reservation.schoolChildren || 0}・未就学${reservation.preschoolChildren || 0}）`
+    : `子供${reservation.children}`;
+  const title = `【予約】${reservation.name}様 ${reservation.totalPeople}名（大人${reservation.adults}・${_childInfo}）`;
   const description = [
     `予約ID: ${reservation.reservationId}`,
     `電話: ${reservation.phone}`,
