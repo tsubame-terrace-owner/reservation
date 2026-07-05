@@ -45,7 +45,7 @@
         <div class="note">
           <ul>
             <li>ご予約は翌日から1ヶ月先までとなります</li>
-            <li>各枠お1組あたり<span id="capacity-note">12</span>名様まで</li>
+            <li>各枠お1組あたり最大<span id="capacity-note">13</span>名様まで</li>
             <li>×は満席です</li>
           </ul>
         </div>
@@ -60,7 +60,7 @@
           <label>大人の人数 <span class="required">必須</span></label>
           <div class="number-input">
             <button type="button" class="num-btn" data-field="adults" data-delta="-1">−</button>
-            <input type="number" id="adults" min="1" max="12" value="2" readonly>
+            <input type="number" id="adults" min="1" max="13" value="2" readonly>
             <button type="button" class="num-btn" data-field="adults" data-delta="1">+</button>
           </div>
         </div>
@@ -69,7 +69,7 @@
           <label>お子様の人数</label>
           <div class="number-input">
             <button type="button" class="num-btn" data-field="children" data-delta="-1">−</button>
-            <input type="number" id="children" min="0" max="12" value="0" readonly>
+            <input type="number" id="children" min="0" max="13" value="0" readonly>
             <button type="button" class="num-btn" data-field="children" data-delta="1">+</button>
           </div>
           <p class="hint">※ お子様も人数に含めてお席をご用意します</p>
@@ -160,7 +160,7 @@
         { id: 'slot1', label: '11:00〜' },
         { id: 'slot2', label: '13:00〜' },
       ],
-      capacity: 12,
+      capacity: 13,
       bookingWindowDays: 30,
       minDaysAhead: 1,
       storeName: '燕テラス',
