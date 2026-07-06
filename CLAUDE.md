@@ -114,6 +114,14 @@ clasp redeploy <お客様デプロイID> -V <番号> -d "変更の説明"   # �
 
 技術的な強制力は `.claude/settings.local.json` に設定済み（読み取り系は自動許可、本番反映系＝`clasp push` / `redeploy` / `run` / `git push` 等は**必ず確認プロンプト**）。
 
+## 申し送り（未完の整合作業）
+
+**子ども内訳（小学生以上/未就学）対応の残り**（2026-07-07 時点）:
+- お客様向けの `docs/form.html`・`docs/change.html` は**案C（お連れのお子様→小学生以上/未就学の内訳入力）に対応済み**。バックエンド（`schoolChildren`/`preschoolChildren` 列）・シートも対応済み・本番稼働中。
+- ⚠️ **GAS配信の `gas/Form.html`・`gas/Admin.html`・`gas/Change.html` は旧UI（大人/子ども）のまま**。オーナーの手動予約画面などで、お客様は使わないため実害はないが未整合。
+- → **これらの gas HTML を次に触る時に、案Cへ揃える**こと。参考実装は `docs/form.html`（ラジオ+内訳ステッパー+注意書き、payload に schoolChildren/preschoolChildren を送る）。
+- 詳細はメモリ `child-reservation-migration` 参照。
+
 ## 触らないでいいこと
 
 - 認証導入（URL ベース、トークンは予約ごとの個別キー方式）
