@@ -131,8 +131,34 @@
         '<p>' + escapeHtml(msg) + '</p></div>';
     }
 
+    // ===== 人数ヘルパー（案C：大人＋小学生以上＋未就学）=====
+    function getCount(id) { const el = document.getElementById(id); return el ? (parseInt(el.value) || 0) : 0; }
+    function kidsOn() {
+      const r = document.querySelector('input[name="hasKids"]:checked');
+      return !!r && r.value === 'yes';
+    }
+    function childrenTotal() { return kidsOn() ? getCount('schoolChildren') + getCount('preschoolChildren') : 0; }
+    function partyTotal() { return getCount('adults') + childrenTotal(); }
+
+    // 既存予約から内訳の初期値を決める（旧予約は合計を小学生以上に暫定表示）
+    function initialKids(r) {
+      const hasBreakdown = (r.schoolChildren !== '' && r.schoolChildren != null) ||
+                           (r.preschoolChildren !== '' && r.preschoolChildren != null);
+      if (hasBreakdown) {
+        const s = Number(r.schoolChildren) || 0;
+        const p = Number(r.preschoolChildren) || 0;
+        return { on: (s + p) > 0, school: s, pre: p, legacy: false };
+      }
+      const c = Number(r.children) || 0;
+      return { on: c > 0, school: c, pre: 0, legacy: c > 0 };
+    }
+
     // ===== メインUI構築 =====
     function renderMainUI(reservation) {
+      const k0 = initialKids(reservation);
+      const legacyNote = k0.legacy
+        ? '<p class="hint">※ 以前のご予約のため、お子様の内訳は仮表示です。小学生以上／未就学をお確かめください。</p>'
+        : '';
       document.getElementById('app').innerHTML =
         '<div class="selected-slot">' +
           '<div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">現在のご予約</div>' +
@@ -159,12 +185,32 @@
             '</div>' +
           '</div>' +
           '<div class="form-group">' +
-            '<label>お子様の人数</label>' +
-            '<div class="number-input">' +
-              '<button type="button" class="num-btn" data-field="children" data-delta="-1">−</button>' +
-              '<input type="number" id="children" min="0" max="13" value="' + reservation.children + '" readonly>' +
-              '<button type="button" class="num-btn" data-field="children" data-delta="1">+</button>' +
+            '<label>お連れのお子様</label>' +
+            '<div class="radios" role="radiogroup" aria-label="お連れのお子様">' +
+              '<label class="radio"><input type="radio" name="hasKids" value="no"' + (k0.on ? '' : ' checked') + '><span class="mark"></span>なし</label>' +
+              '<label class="radio"><input type="radio" name="hasKids" value="yes"' + (k0.on ? ' checked' : '') + '><span class="mark"></span>あり</label>' +
             '</div>' +
+          '</div>' +
+          '<div class="kids-detail' + (k0.on ? ' open' : '') + '" id="kids-detail">' +
+            '<div class="form-group">' +
+              '<label>小学生以上のお子様</label>' +
+              '<div class="number-input">' +
+                '<button type="button" class="num-btn" data-field="schoolChildren" data-delta="-1">−</button>' +
+                '<input type="number" id="schoolChildren" min="0" max="13" value="' + k0.school + '" readonly>' +
+                '<button type="button" class="num-btn" data-field="schoolChildren" data-delta="1">+</button>' +
+              '</div>' +
+              '<p class="hint">※ お一人さま1プレートのご注文をお願いしております。</p>' +
+            '</div>' +
+            '<div class="form-group">' +
+              '<label>未就学のお子様 <span class="age-note">0〜5歳ごろ</span></label>' +
+              '<div class="number-input">' +
+                '<button type="button" class="num-btn" data-field="preschoolChildren" data-delta="-1">−</button>' +
+                '<input type="number" id="preschoolChildren" min="0" max="13" value="' + k0.pre + '" readonly>' +
+                '<button type="button" class="num-btn" data-field="preschoolChildren" data-delta="1">+</button>' +
+              '</div>' +
+              '<p class="hint">※ チャイルドシートのご用意はございません。あらかじめご了承ください。</p>' +
+            '</div>' +
+            legacyNote +
           '</div>' +
           '<div class="form-group">' +
             '<label for="name">お名前 <span class="required">必須</span></label>' +
@@ -295,11 +341,12 @@
           '<span class="selected-slot-label">' + getSlotLabel(slotId) + '</span>' +
         '</div>';
 
-      const adults = parseInt(document.getElementById('adults').value);
-      const children = parseInt(document.getElementById('children').value);
-      if (adults + children > effectiveAvail) {
-        document.getElementById('adults').value = Math.min(adults, effectiveAvail);
-        document.getElementById('children').value = 0;
+      if (partyTotal() > effectiveAvail) {
+        document.getElementById('schoolChildren').value = 0;
+        document.getElementById('preschoolChildren').value = 0;
+        if (getCount('adults') > effectiveAvail) {
+          document.getElementById('adults').value = Math.max(1, effectiveAvail);
+        }
       }
 
       showStep('step-details');
@@ -312,20 +359,32 @@
           const delta = parseInt(btn.dataset.delta);
           const input = document.getElementById(field);
           const cur = parseInt(input.value) || 0;
-          const adults = field === 'adults' ? cur + delta : parseInt(document.getElementById('adults').value);
-          const children = field === 'children' ? cur + delta : parseInt(document.getElementById('children').value);
-          if (adults < 1) return;
-          if (children < 0) return;
+          const next = cur + delta;
+          const min = field === 'adults' ? 1 : 0;
+          if (next < min) return;
+          const newTotal = partyTotal() - cur + next;
           const maxAllowed = state.effectiveAvail || CONFIG.capacity;
-          if (adults + children > maxAllowed) {
+          if (newTotal > maxAllowed) {
             showToast('選択された枠は残り' + maxAllowed + '名です');
             return;
           }
-          if (adults + children > CONFIG.capacity) {
+          if (newTotal > CONFIG.capacity) {
             showToast('1回のご予約は' + CONFIG.capacity + '名までです');
             return;
           }
-          input.value = (field === 'adults' ? adults : children);
+          input.value = next;
+        });
+      });
+
+      // お連れのお子様（なし／あり）
+      document.querySelectorAll('input[name="hasKids"]').forEach(r => {
+        r.addEventListener('change', () => {
+          const on = r.value === 'yes';
+          document.getElementById('kids-detail').classList.toggle('open', on);
+          if (!on) {
+            document.getElementById('schoolChildren').value = 0;
+            document.getElementById('preschoolChildren').value = 0;
+          }
         });
       });
 
@@ -341,11 +400,16 @@
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
           showToast('メールアドレスを正しく入力してください'); return;
         }
+        const _on = kidsOn();
+        const _school = _on ? getCount('schoolChildren') : 0;
+        const _pre = _on ? getCount('preschoolChildren') : 0;
         state.form = {
           reservationDate: state.selectedDate,
           slot: state.selectedSlot,
-          adults: parseInt(document.getElementById('adults').value),
-          children: parseInt(document.getElementById('children').value),
+          adults: getCount('adults'),
+          schoolChildren: _school,
+          preschoolChildren: _pre,
+          children: _school + _pre,
           name: name, phone: phone, email: email,
           source: '',
           notes: document.getElementById('notes').value.trim(),
@@ -360,11 +424,14 @@
     function renderConfirm() {
       const f = state.form;
       const total = f.adults + f.children;
+      const peopleDetail = f.children > 0
+        ? '合計 ' + total + ' 名（大人 ' + f.adults + ' / 小学生以上 ' + f.schoolChildren + ' / 未就学 ' + f.preschoolChildren + '）'
+        : '合計 ' + total + ' 名（大人 ' + f.adults + '）';
       document.getElementById('confirm-content').innerHTML =
         '<dl class="confirm-dl">' +
           '<dt>ご来店日</dt><dd>' + formatDateJa(f.reservationDate) + '</dd>' +
           '<dt>お時間</dt><dd>' + getSlotLabel(f.slot) + '</dd>' +
-          '<dt>人数</dt><dd>合計 ' + total + ' 名（大人 ' + f.adults + ' / お子様 ' + f.children + '）</dd>' +
+          '<dt>人数</dt><dd>' + peopleDetail + '</dd>' +
           '<dt>お名前</dt><dd>' + escapeHtml(f.name) + '</dd>' +
           '<dt>お電話</dt><dd>' + escapeHtml(f.phone) + '</dd>' +
           '<dt>メール</dt><dd>' + escapeHtml(f.email) + '</dd>' +
