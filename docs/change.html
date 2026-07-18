@@ -44,7 +44,7 @@
 
     let CONFIG = {
       slots: [{ id: 'slot1', label: '11:00〜' }, { id: 'slot2', label: '13:00〜' }],
-      capacity: 13,
+      capacity: 14,
       bookingWindowDays: 30,
       minDaysAhead: 1,
       storeName: '燕テラス',
@@ -180,7 +180,7 @@
             '<label>大人の人数 <span class="required">必須</span></label>' +
             '<div class="number-input">' +
               '<button type="button" class="num-btn" data-field="adults" data-delta="-1">−</button>' +
-              '<input type="number" id="adults" min="1" max="13" value="' + reservation.adults + '" readonly>' +
+              '<input type="number" id="adults" min="1" max="14" value="' + reservation.adults + '" readonly>' +
               '<button type="button" class="num-btn" data-field="adults" data-delta="1">+</button>' +
             '</div>' +
           '</div>' +
@@ -196,7 +196,7 @@
               '<label>小学生以上のお子様</label>' +
               '<div class="number-input">' +
                 '<button type="button" class="num-btn" data-field="schoolChildren" data-delta="-1">−</button>' +
-                '<input type="number" id="schoolChildren" min="0" max="13" value="' + k0.school + '" readonly>' +
+                '<input type="number" id="schoolChildren" min="0" max="14" value="' + k0.school + '" readonly>' +
                 '<button type="button" class="num-btn" data-field="schoolChildren" data-delta="1">+</button>' +
               '</div>' +
               '<p class="hint">※ お一人さま1プレートのご注文をお願いしております。</p>' +
@@ -205,7 +205,7 @@
               '<label>未就学のお子様 <span class="age-note">0〜5歳ごろ</span></label>' +
               '<div class="number-input">' +
                 '<button type="button" class="num-btn" data-field="preschoolChildren" data-delta="-1">−</button>' +
-                '<input type="number" id="preschoolChildren" min="0" max="13" value="' + k0.pre + '" readonly>' +
+                '<input type="number" id="preschoolChildren" min="0" max="14" value="' + k0.pre + '" readonly>' +
                 '<button type="button" class="num-btn" data-field="preschoolChildren" data-delta="1">+</button>' +
               '</div>' +
               '<p class="hint">※ チャイルドシートのご用意はございません。あらかじめご了承ください。</p>' +
