@@ -111,25 +111,26 @@
       font-size: 36px;
       font-weight: 500;
       letter-spacing: 0.18em;
-      margin-bottom: 12px;
+      margin-bottom: 0;
       text-shadow: 0 2px 12px rgba(0,0,0,0.4);
     }
 
-    .subtitle {
-      font-size: 14px;
-      letter-spacing: 0.18em;
-      margin-bottom: 56px;
-      opacity: 0.95;
-      text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+    /* CTAはこのラッパー内に縦積み。将来アクセス等を足す時はここに <a> を1行足す */
+    .hero-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      margin-top: 56px;
     }
 
-    .reserve-btn {
-      display: inline-block;
-      background: rgba(255, 255, 255, 0.96);
-      color: #2C2824 !important;
+    .hero-btn {
+      display: block;
+      width: 100%;
+      max-width: 280px;
       text-decoration: none;
-      padding: 20px 56px;
-      font-size: 17px;
+      padding: 18px 24px;
+      font-size: 16px;
       letter-spacing: 0.12em;
       border-radius: 3px;
       font-family: inherit;
@@ -137,9 +138,30 @@
       transition: transform 0.15s, background 0.15s;
     }
 
-    .reserve-btn:hover, .reserve-btn:active {
-      background: white;
+    .hero-btn:hover, .hero-btn:active {
       transform: translateY(-2px);
+    }
+
+    .hero-btn-primary {
+      background: rgba(255, 255, 255, 0.96);
+      color: #2C2824 !important;
+      border: 1px solid rgba(255, 255, 255, 0.96);
+    }
+
+    .hero-btn-primary:hover, .hero-btn-primary:active {
+      background: white;
+    }
+
+    .hero-btn-ghost {
+      background: rgba(0, 0, 0, 0.18);
+      color: white !important;
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+
+    .hero-btn-ghost:hover, .hero-btn-ghost:active {
+      background: rgba(0, 0, 0, 0.3);
     }
 
     /* ===== フッター ===== */
@@ -155,8 +177,8 @@
     /* ===== レスポンシブ ===== */
     @media (max-width: 480px) {
       .store-name { font-size: 30px; }
-      .subtitle { font-size: 13px; margin-bottom: 44px; }
-      .reserve-btn { padding: 18px 44px; font-size: 16px; }
+      .hero-actions { margin-top: 44px; gap: 18px; }
+      .hero-btn { padding: 17px 20px; font-size: 15px; }
     }
   </style>
 </head>
@@ -170,8 +192,12 @@
     <div class="hero-overlay"></div>
     <div class="hero-content">
       <h1 class="store-name">燕テラス</h1>
-      <p class="subtitle">ご予約ページ</p>
-      <a class="reserve-btn" href="./form.html">予約フォームを開く</a>
+      <div class="hero-actions">
+        <a class="hero-btn hero-btn-ghost" href="./menu.html">ランチメニューはこちら</a>
+        <a class="hero-btn hero-btn-primary" href="./form.html">ご予約はこちら</a>
+        <!-- 将来アクセスを足す時はここに1行:
+             <a class="hero-btn hero-btn-ghost" href="./access.html">アクセスはこちら</a> -->
+      </div>
     </div>
   </section>
 

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>燕テラス お品書き | 奈良県葛城市</title>
+  <meta name="description" content="奈良県葛城市の古民家レストラン燕テラスのお品書き。プレート・デザート・ドリンクをそれぞれ1つずつお選びいただけます。2,650円（税込）〜。">
+  <link rel="canonical" href="https://tsubame-terrace-owner.github.io/reservation/menu.html">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="燕テラス お品書き">
+  <meta property="og:description" content="奈良県葛城市の古民家レストラン燕テラスのお品書き。">
+  <meta property="og:image" content="https://tsubame-terrace-owner.github.io/reservation/assets/menu/plate-rice.jpg">
+  <meta property="og:url" content="https://tsubame-terrace-owner.github.io/reservation/menu.html">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:site_name" content="燕テラス">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="燕テラス お品書き">
+  <meta name="twitter:description" content="奈良県葛城市の古民家レストラン燕テラスのお品書き。">
+  <meta name="twitter:image" content="https://tsubame-terrace-owner.github.io/reservation/assets/menu/plate-rice.jpg">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GTXCXLNSX5"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-GTXCXLNSX5');
+  </script>
+
+  <style>
+    /* menu.html 固有のスタイル（styles.css は共通なので触らない） */
+
+    /* ===== 冒頭のセット説明 ===== */
+    .set-intro {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .set-intro-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin: 0;
+      line-height: 1.9;
+    }
+
+    /* ===== カテゴリ ===== */
+    .menu-section {
+      margin-bottom: 40px;
+    }
+
+    /*
+      カテゴリ見出し。スクロール中は画面上部に貼り付き、
+      次のカテゴリが来ると押し出されて入れ替わる（position: sticky）
+    */
+    .menu-head {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      background: var(--bg);
+      padding: 14px 0 11px;
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 14px;
+    }
+
+    .menu-title {
+      font-size: 17px;
+      font-weight: 500;
+      margin: 0;
+      letter-spacing: 0.1em;
+    }
+
+    /* 「1つお選びいただけます」の但し書き */
+    .menu-pick {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    /* カテゴリ全体にかかる補足（「季節の副菜とポタージュスープが付きます」等） */
+    .menu-note-line {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0 0 16px;
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    /*
+      写真つきの品目カード。
+      minmax(0, 1fr) にすること。単なる 1fr だと列が画像の元幅まで
+      広がってしまい、横にはみ出す
+    */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .menu-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    /* 写真なしの品目。2列の下に横幅いっぱいで置く */
+    .menu-card--wide {
+      grid-column: 1 / -1;
+    }
+
+    .menu-card--wide .menu-body {
+      padding: 14px 16px;
+    }
+
+    /* 円い皿の俯瞰写真が多いので正方形で切り出す */
+    .menu-photo {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      background: var(--bg-subtle);
+    }
+
+    .menu-body {
+      padding: 12px 14px;
+    }
+
+    /* 「ご飯プレート」等の小見出しラベル */
+    .menu-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      margin: 0 0 5px;
+    }
+
+    .menu-name {
+      font-size: 15px;
+      letter-spacing: 0.04em;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .menu-desc {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.8;
+    }
+
+    /* ===== 写真なしの品目リスト（ドリンク） ===== */
+    .menu-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 3px;
+    }
+
+    .menu-list li {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .menu-list li:last-child {
+      border-bottom: none;
+    }
+
+    .drink-name {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0.03em;
+    }
+
+    .drink-desc {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* ドリンクの小分類（ソフトドリンク／ノンアルコール／アルコール） */
+    .drink-group + .drink-group {
+      margin-top: 24px;
+    }
+
+    .drink-group-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.14em;
+      margin: 0 0 8px;
+      padding-left: 2px;
+    }
+
+    /* ===== 一通り見終わった後に出す価格 ===== */
+    .set-price {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 0 0 12px;
+    }
+
+    .set-price::before,
+    .set-price::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-light);
+    }
+
+    .set-price-text {
+      flex: 0 0 auto;
+      font-size: 16px;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      text-align: center;
+      margin: 0;
+    }
+
+    .set-price-text .amount {
+      font-size: 19px;
+      letter-spacing: 0.04em;
+    }
+
+    .set-price-text .tax {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-left: 4px;
+    }
+
+    .set-price-sub {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0 0 36px;
+      line-height: 1.8;
+    }
+
+    /* ===== 注意書き ===== */
+    .menu-note {
+      background: var(--bg-subtle);
+      border-radius: 3px;
+      padding: 16px 20px;
+      margin-bottom: 32px;
+    }
+
+    .menu-note ul {
+      margin: 0;
+      padding-left: 1.2em;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.9;
+    }
+
+    /* ===== ページ末尾のリンク ===== */
+    .menu-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .menu-actions a {
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      padding: 16px 20px;
+      font-size: 16px;
+      font-family: inherit;
+      border-radius: 3px;
+      letter-spacing: 0.05em;
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      transition: all 0.15s;
+    }
+
+    .menu-actions a:hover {
+      background: var(--bg-subtle);
+    }
+
+    /* ===== 画面下に固定する予約CTA ===== */
+    .sticky-cta {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+      background: rgba(250, 248, 244, 0.94);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border-top: 1px solid var(--border-light);
+      padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+    }
+
+    .sticky-cta a {
+      display: block;
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+      text-decoration: none;
+      background: var(--accent);
+      color: white;
+      border: 1px solid var(--accent);
+      padding: 15px 20px;
+      font-size: 16px;
+      font-family: inherit;
+      border-radius: 3px;
+      letter-spacing: 0.05em;
+      transition: background 0.15s;
+    }
+
+    .sticky-cta a:hover {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+    }
+
+    /* 固定CTAがフッターに被らないよう下に余白を確保 */
+    body {
+      padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    }
+
+    @media (max-width: 480px) {
+      .menu-title { font-size: 16px; }
+      .set-price-text { font-size: 15px; }
+      .set-price-text .amount { font-size: 18px; }
+      .menu-grid { gap: 12px; }
+      .menu-body { padding: 10px 12px; }
+      .menu-name { font-size: 14px; }
+      .drink-name { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="store-name">燕テラス</h1>
+      <p class="subtitle">お品書き</p>
+    </header>
+
+    <main>
+      <!-- ===== セットの説明（1つずつ選べることを最初に伝える。価格はここでは出さない） ===== -->
+      <div class="set-intro">
+        <p class="set-intro-desc">
+          プレート・デザート・ドリンクから<br>
+          それぞれ1つずつお選びいただけます。
+        </p>
+      </div>
+
+      <!--
+        ▼▼▼ ここから下がメニュー本体。季節ごとの差し替えはこのブロックだけ触ればOK ▼▼▼
+
+        ・<section class="menu-section"> がカテゴリ1つぶん
+        ・<li class="menu-card"> が品目1つぶん。増やす時はこの li をコピーして貼る
+        ・写真は src="assets/menu/ファイル名.jpg" を差し替える
+      -->
+
+      <!-- ===== プレート ===== -->
+      <section class="menu-section">
+        <div class="menu-head">
+          <h2 class="menu-title">プレート</h2>
+          <span class="menu-pick">1つお選びいただけます</span>
+        </div>
+        <p class="menu-note-line">季節の副菜とポタージュスープが付きます。</p>
+
+        <ul class="menu-grid">
+          <li class="menu-card">
+            <img class="menu-photo" src="assets/menu/plate-rice.jpg" alt="白ワインでやわらかく煮込んだチキンと香りのごはん" width="1000" height="1000">
+            <div class="menu-body">
+              <span class="menu-label">ご飯プレート</span>
+              <p class="menu-name">白ワインでやわらかく煮込んだ<br>チキンと香りのごはん</p>
+            </div>
+          </li>
+
+          <li class="menu-card">
+            <img class="menu-photo" src="assets/menu/plate-opensand.jpg" alt="グリル野菜のオープンサンドとキッシュ" width="1000" height="1000" loading="lazy">
+            <div class="menu-body">
+              <span class="menu-label">オープンサンドプレート</span>
+              <p class="menu-name">グリル野菜のオープンサンドとキッシュ</p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ===== デザート ===== -->
+      <section class="menu-section">
+        <div class="menu-head">
+          <h2 class="menu-title">デザート</h2>
+          <span class="menu-pick">1つお選びいただけます</span>
+        </div>
+
+        <ul class="menu-grid">
+          <li class="menu-card">
+            <img class="menu-photo" src="assets/menu/dessert-meringue.jpg" alt="レモンとココナッツ 爽やかなメレンゲ菓子" width="1000" height="1000" loading="lazy">
+            <div class="menu-body">
+              <p class="menu-name">レモンとココナッツ<br>爽やかなメレンゲ菓子</p>
+              <p class="menu-desc">一つひとつ丁寧に焼き上げたメレンゲ菓子です。柑橘とココナッツの香りが爽やかな一品です。</p>
+            </div>
+          </li>
+
+          <li class="menu-card">
+            <img class="menu-photo" src="assets/menu/dessert-flan.jpg" alt="米粉のフラン" width="1000" height="1000" loading="lazy">
+            <div class="menu-body">
+              <p class="menu-name">米粉のフラン</p>
+              <p class="menu-desc">プリンのような食感のタルトのケーキです。葛城産の平飼い卵とバターをたっぷり使用しています。</p>
+            </div>
+          </li>
+
+          <!-- 写真なしの品目。menu-card--wide で下段に横幅いっぱいで並ぶ -->
+          <li class="menu-card menu-card--wide">
+            <div class="menu-body">
+              <p class="menu-name">季節のフラン</p>
+              <p class="menu-desc">フランをベースに、季節の食材を使ったソースを添えた一品です。</p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ===== ドリンク ===== -->
+      <section class="menu-section">
+        <div class="menu-head">
+          <h2 class="menu-title">ドリンク</h2>
+          <span class="menu-pick">1つお選びいただけます</span>
+        </div>
+
+        <div class="drink-group">
+          <h3 class="drink-group-title">ソフトドリンク</h3>
+          <ul class="menu-list">
+            <li>
+              <p class="drink-name">ドリップコーヒー（ICE / HOT）</p>
+              <p class="drink-desc">THE INYさんのコーヒー豆を使用しています。</p>
+            </li>
+            <li>
+              <p class="drink-name">カフェラテ（ICE / HOT）</p>
+              <p class="drink-desc">THE INYさんのコーヒー豆を使用しています。</p>
+            </li>
+            <li>
+              <p class="drink-name">抹茶ラテ（ICE / HOT）</p>
+              <p class="drink-desc">奈良県山添村 北村園さんの、無農薬で栽培された抹茶を使用しています。</p>
+            </li>
+            <li>
+              <p class="drink-name">チャイラテ（ICE / HOT）</p>
+              <p class="drink-desc">自家製のチャイシロップを牛乳で割ったドリンクです。</p>
+            </li>
+            <li>
+              <p class="drink-name">チャイソーダ</p>
+              <p class="drink-desc">自家製チャイシロップを炭酸で割った、爽やかなドリンクです。</p>
+            </li>
+            <li>
+              <p class="drink-name">自家製シロップソーダ</p>
+              <p class="drink-desc">手づくりのシロップを炭酸で割ったドリンクです。いちご、または季節の柑橘からお選びいただけます。</p>
+            </li>
+          </ul>
+        </div>
+
+        <div class="drink-group">
+          <h3 class="drink-group-title">ノンアルコール</h3>
+          <ul class="menu-list">
+            <li>
+              <p class="drink-name">柑橘のモヒート</p>
+              <p class="drink-desc">季節の柑橘と、お店の庭で採れたミントを合わせたノンアルモヒートです。</p>
+            </li>
+            <li>
+              <p class="drink-name">CLAUSTHALER</p>
+              <p class="drink-desc">ノンアルコールビールです。</p>
+            </li>
+          </ul>
+        </div>
+
+        <div class="drink-group">
+          <h3 class="drink-group-title">アルコール</h3>
+          <ul class="menu-list">
+            <li>
+              <p class="drink-name">吉野杉ペールエール</p>
+              <p class="drink-desc">奈良県奥大和にあるクラフトビール醸造所「グッドウルフ麦酒」さんのビールです。</p>
+            </li>
+            <li>
+              <p class="drink-name">ほうじ茶スタウト</p>
+              <p class="drink-desc">奈良県奥大和にあるクラフトビール醸造所「グッドウルフ麦酒」さんのビールです。</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ▲▲▲ メニュー本体ここまで ▲▲▲ -->
+
+      <!-- ===== 一通り見終わった後に、はじめて価格を出す ===== -->
+      <div class="set-price">
+        <p class="set-price-text">
+          <span class="amount">2,650円</span>〜<span class="tax">税込</span>
+        </p>
+      </div>
+      <p class="set-price-sub">デザートとドリンクの料金も含まれています。</p>
+
+      <div class="menu-note">
+        <ul>
+          <li>表示価格はすべて税込です。</li>
+          <li>お選びいただくメニューによって、追加料金が発生する場合がございます。</li>
+          <li>仕入れの状況により、内容が変わる場合がございます。</li>
+          <li>アレルギーのある方は、ご予約時のご要望欄にご記入ください。</li>
+        </ul>
+      </div>
+
+      <div class="menu-actions">
+        <a href="./index.html">トップに戻る</a>
+      </div>
+    </main>
+
+    <footer class="footer">
+      &copy; 燕テラス
+    </footer>
+  </div>
+
+  <!-- 画面下に常に出る予約CTA -->
+  <div class="sticky-cta">
+    <a href="./form.html">ご予約はこちら</a>
+  </div>
+</body>
+</html>
