@@ -1,2 +1,7 @@
 # Claude Code 個人設定（各自ローカル）
 .claude/settings.local.json
+
+# 確認用の一時ファイル（プレビュー枠・コンタクトシート等）。誤ってコミットしない保険
+_*.html
+_*.jpg
+_*.png
