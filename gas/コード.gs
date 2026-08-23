@@ -19,7 +19,8 @@ const CONFIG = {
   CAPACITY_PER_SLOT: 14,
   BOOKING_WINDOW_DAYS: 30, // お客様が予約可能な日数（今日から何日先まで）
   ADMIN_BOOKING_WINDOW_DAYS: 90, // 管理画面で予約可能な日数（今日から何日先まで）
-  MIN_BOOKING_DAYS_AHEAD: 1, // 最短何日先から予約可能か（1 = 翌日から、当日不可）
+  MIN_BOOKING_DAYS_AHEAD: 0, // 最短何日先から予約可能か（0 = 当日から / 1 = 翌日から。1 に戻せば当日予約を全面停止できる）
+  BOOKING_CUTOFF_MINUTES: 30, // 各枠の開始何分前まで受け付けるか（当日予約の締切）
 
   // カレンダー（Googleカレンダー: 予約書き込み用）
   RESERVATION_CALENDAR_ID: '', // 予約を書き込むカレンダーID（未設定なら書き込まない）
@@ -90,7 +91,9 @@ function renderFormPage() {
     slots: CONFIG.SLOTS,
     capacity: CONFIG.CAPACITY_PER_SLOT,
     bookingWindowDays: CONFIG.BOOKING_WINDOW_DAYS,
-    minDaysAhead: CONFIG.MIN_BOOKING_DAYS_AHEAD,
+    // 旧GAS UI（Form.html）は当日予約の受付終了表示に未対応のため翌日以降で固定する。
+    // お客様導線は docs/form.html（GitHub Pages）なのでこちらは凍結でよい。
+    minDaysAhead: 1,
     storeName: CONFIG.STORE_NAME,
   };
   tpl.userEmail = Session.getActiveUser().getEmail() || '';
@@ -121,7 +124,8 @@ function renderChangePage(token) {
     slots: CONFIG.SLOTS,
     capacity: CONFIG.CAPACITY_PER_SLOT,
     bookingWindowDays: CONFIG.BOOKING_WINDOW_DAYS,
-    minDaysAhead: CONFIG.MIN_BOOKING_DAYS_AHEAD,
+    // 旧GAS UI（Change.html）は当日予約の受付終了表示に未対応のため翌日以降で固定する
+    minDaysAhead: 1,
     storeName: CONFIG.STORE_NAME,
   };
   return tpl.evaluate()
@@ -167,6 +171,32 @@ function include(filename) {
 }
 
 /**
+ * 外部フロント（GitHub Pages の docs/）に渡す公開設定。
+ * getConfig / getInitialData / getChangeInitialData で共用する。
+ *
+ * startHour / startMinute はフロントが受付締切をローカル計算するために必要
+ * （ページを開いたまま締切を跨いだ時に、サーバへ問い合わせずボタンを閉じるため）。
+ *
+ * ※ HtmlService 経路（renderFormPage / renderChangePage / renderAdminPage）は
+ *   旧UI向けに別の config を渡しているので、ここには寄せないこと。
+ */
+function getPublicConfig() {
+  return {
+    slots: CONFIG.SLOTS.map(s => ({
+      id: s.id,
+      label: s.label,
+      startHour: s.startHour,
+      startMinute: s.startMinute,
+    })),
+    capacity: CONFIG.CAPACITY_PER_SLOT,
+    bookingWindowDays: CONFIG.BOOKING_WINDOW_DAYS,
+    minDaysAhead: CONFIG.MIN_BOOKING_DAYS_AHEAD,
+    cutoffMinutes: CONFIG.BOOKING_CUTOFF_MINUTES,
+    storeName: CONFIG.STORE_NAME,
+  };
+}
+
+/**
  * POSTリクエスト（外部フロントエンド: GitHub Pagesなどからの API 呼び出し用）
  * action パラメータで処理を分岐する。
  */
@@ -193,13 +223,8 @@ function doPost(e) {
       case 'getConfig':
         result = {
           success: true,
-          config: {
-            slots: CONFIG.SLOTS.map(s => ({ id: s.id, label: s.label })),
-            capacity: CONFIG.CAPACITY_PER_SLOT,
-            bookingWindowDays: CONFIG.BOOKING_WINDOW_DAYS,
-            minDaysAhead: CONFIG.MIN_BOOKING_DAYS_AHEAD,
-            storeName: CONFIG.STORE_NAME,
-          },
+          config: getPublicConfig(),
+          serverNow: Date.now(),
         };
         break;
 
@@ -207,6 +232,7 @@ function doPost(e) {
         result = {
           success: true,
           availability: getAvailabilityRange(data.startDate, data.endDate),
+          serverNow: Date.now(),
         };
         break;
 
@@ -221,13 +247,8 @@ function doPost(e) {
         const endStr = formatDate(end);
         result = {
           success: true,
-          config: {
-            slots: CONFIG.SLOTS.map(s => ({ id: s.id, label: s.label })),
-            capacity: CONFIG.CAPACITY_PER_SLOT,
-            bookingWindowDays: CONFIG.BOOKING_WINDOW_DAYS,
-            minDaysAhead: CONFIG.MIN_BOOKING_DAYS_AHEAD,
-            storeName: CONFIG.STORE_NAME,
-          },
+          config: getPublicConfig(),
+          serverNow: Date.now(),
           dateRange: { start: startStr, end: endStr },
           availability: getAvailabilityRange(startStr, endStr),
         };
@@ -269,13 +290,8 @@ function doPost(e) {
         result = {
           success: true,
           reservation: r,
-          config: {
-            slots: CONFIG.SLOTS.map(s => ({ id: s.id, label: s.label })),
-            capacity: CONFIG.CAPACITY_PER_SLOT,
-            bookingWindowDays: CONFIG.BOOKING_WINDOW_DAYS,
-            minDaysAhead: CONFIG.MIN_BOOKING_DAYS_AHEAD,
-            storeName: CONFIG.STORE_NAME,
-          },
+          config: getPublicConfig(),
+          serverNow: Date.now(),
           dateRange: { start: startStr_c, end: endStr_c },
           availability: getAvailabilityRange(startStr_c, endStr_c),
         };
@@ -314,11 +330,21 @@ function doPost(e) {
 
 /**
  * 指定期間の空き状況を取得（カレンダーUI用）
- * @returns {Object} { 'YYYY-MM-DD': { slot1: {available, isHoliday}, slot2: {...} } }
+ *
+ * closed は「受付時間を過ぎた枠」を表す（当日枠が開始30分前を過ぎた場合など）。
+ * closed でも available（残席数）はそのまま返す — 空いていれば店頭でご案内できる
+ * 可能性があるため、画面には残席を出したままグレーアウトする。
+ *
+ * @param {string} startDateStr 'YYYY-MM-DD'
+ * @param {string} endDateStr   'YYYY-MM-DD'
+ * @param {Date|number} [nowOverride] 判定の基準時刻（テスト用の任意引数）
+ * @returns {Object} { 'YYYY-MM-DD': { slot1: {booked, available, isHoliday, closed}, slot2: {...} } }
  */
-function getAvailabilityRange(startDateStr, endDateStr) {
+function getAvailabilityRange(startDateStr, endDateStr, nowOverride) {
   const startDate = parseDate(startDateStr);
   const endDate = parseDate(endDateStr);
+  // 1レスポンス内で判定時刻を固定する（枠ごとに基準時刻がズレるのを防ぐ）
+  const now = nowOverride == null ? new Date() : new Date(nowOverride);
 
   // 予約集計
   const reservations = getAllActiveReservations();
@@ -343,6 +369,7 @@ function getAvailabilityRange(startDateStr, endDateStr) {
         booked: booked,
         available: Math.max(0, CONFIG.CAPACITY_PER_SLOT - booked),
         isHoliday: isHoliday,
+        closed: !isSlotBookable(dateStr, s.id, now),
       };
     });
     cursor.setDate(cursor.getDate() + 1);
@@ -367,7 +394,7 @@ function submitReservation(data) {
     // バリデーション
     const validation = validateReservationData(data);
     if (!validation.ok) {
-      return { success: false, message: validation.message };
+      return { success: false, message: validation.message, code: validation.code };
     }
 
     // 空き判定
@@ -508,10 +535,10 @@ function submitChange(token, newData) {
       return { success: false, message: 'この予約は変更できません。' };
     }
 
-    // 新しい予約のバリデーション
+    // 新しい予約のバリデーション（当日枠への変更も新規と同じ30分前ルールを適用）
     const validation = validateReservationData(newData);
     if (!validation.ok) {
-      return { success: false, message: validation.message };
+      return { success: false, message: validation.message, code: validation.code };
     }
 
     const newTotalPeople = Number(newData.adults) + extractChildCounts(newData).children;
@@ -665,6 +692,64 @@ function submitManualReservation(data, token) {
 }
 
 // ===========================================================================
+// 受付締切（各枠の開始 BOOKING_CUTOFF_MINUTES 分前まで受付）
+// ===========================================================================
+
+/**
+ * 枠の開始日時を返す。
+ * new Date(y, m-1, d, H, M) はスクリプトのタイムゾーン（appsscript.json = Asia/Tokyo）で
+ * 解釈される。createCalendarEvent と同じ組み立て方。
+ *
+ * @returns {Date|null} 枠IDや日付が不正なら null
+ */
+function getSlotStartDate(dateStr, slotId) {
+  const slotDef = CONFIG.SLOTS.find(s => s.id === slotId);
+  if (!slotDef) return null;
+  const parts = String(dateStr || '').split('-').map(Number);
+  const y = parts[0], m = parts[1], d = parts[2];
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+  return new Date(y, m - 1, d, slotDef.startHour, slotDef.startMinute, 0, 0);
+}
+
+/**
+ * 枠の受付締切時刻（開始の BOOKING_CUTOFF_MINUTES 分前）
+ * @returns {Date|null}
+ */
+function getSlotCutoffDate(dateStr, slotId) {
+  const start = getSlotStartDate(dateStr, slotId);
+  if (!start) return null;
+  return new Date(start.getTime() - CONFIG.BOOKING_CUTOFF_MINUTES * 60 * 1000);
+}
+
+/**
+ * その枠がまだ受付可能か（＝締切前か）を判定する。
+ *
+ * 締切ちょうど（11:00の枠なら10:30:00.000）は受付OK、それより後はNG。
+ * 過去日の枠は締切がとうに過ぎているので自動的に false になる。
+ *
+ * 空き状況API・予約バリデーションの両方からこの1関数を呼ぶことで、
+ * 「カレンダーでは押せたのに送信したら弾かれる」ズレが起きないようにしている。
+ *
+ * @param {string} dateStr 'YYYY-MM-DD'
+ * @param {string} slotId  'slot1' など
+ * @param {Date|number} [now] 判定の基準時刻。省略時は現在時刻。テストで任意時刻を注入するために使う
+ * @returns {boolean}
+ */
+function isSlotBookable(dateStr, slotId, now) {
+  const cutoff = getSlotCutoffDate(dateStr, slotId);
+  if (!cutoff) return false; // 不正な枠ID・日付は受け付けない
+  let t;
+  if (now instanceof Date) {
+    t = now;
+  } else if (now == null) {
+    t = new Date();
+  } else {
+    t = new Date(now);
+  }
+  return t.getTime() <= cutoff.getTime();
+}
+
+// ===========================================================================
 // バリデーション
 // ===========================================================================
 
@@ -696,10 +781,30 @@ function validateReservationData(data) {
   const maxDate = new Date(today);
   maxDate.setDate(maxDate.getDate() + CONFIG.BOOKING_WINDOW_DAYS);
   if (resDate < minDate) {
-    return { ok: false, message: '当日のご予約は承っておりません。翌日以降をお選びください。' };
+    return {
+      ok: false,
+      code: 'DATE_TOO_EARLY',
+      message: CONFIG.MIN_BOOKING_DAYS_AHEAD > 0
+        ? '当日のご予約は承っておりません。翌日以降をお選びください。'
+        : '過去の日付はご予約いただけません。',
+    };
   }
   if (resDate > maxDate) {
-    return { ok: false, message: `ご予約は${CONFIG.BOOKING_WINDOW_DAYS}日先までとなります。` };
+    return {
+      ok: false,
+      code: 'DATE_TOO_LATE',
+      message: `ご予約は${CONFIG.BOOKING_WINDOW_DAYS}日先までとなります。`,
+    };
+  }
+
+  // 受付締切チェック（当日枠は開始30分前まで）
+  // カレンダーを開いたまま締切を跨いで送信されるケースは、ここで最終的に弾く
+  if (!isSlotBookable(data.reservationDate, data.slot)) {
+    return {
+      ok: false,
+      code: 'SLOT_CLOSED',
+      message: `恐れ入ります、この枠の受付は終了しました（開始${CONFIG.BOOKING_CUTOFF_MINUTES}分前まで）。別のお時間をお選びください。`,
+    };
   }
 
   return { ok: true };
@@ -922,6 +1027,14 @@ function writeReservation(data, totalPeople) {
   const now = new Date();
   const cc = extractChildCounts(data);
 
+  // 当日予約はリマインドメールの対象外にする。
+  // 数時間後のご来店に「明日／本日ご来店です」のメールは不要で、
+  // 直前に送る予約確認メールと内容が重複するため。
+  // 変更（submitChange）も旧行を CHANGED にして新規行を作る設計なので、
+  // 「明日→当日」に変えた予約はここで自動的に対象外になり、
+  // 逆に「当日→明日」に変えた予約は false に戻ってリマインドが復活する。
+  const isSameDayBooking = (data.reservationDate === formatDate(now));
+
   const reservation = {
     reservationId: reservationId,
     createdAt: now,
@@ -940,7 +1053,7 @@ function writeReservation(data, totalPeople) {
     source: (data.source || '').trim(),
     notes: (data.notes || '').trim(),
     cancelToken: cancelToken,
-    reminderSent: false,
+    reminderSent: isSameDayBooking,
     calendarEventId: '',
     updatedAt: now,
     thankYouSent: false,
@@ -977,6 +1090,7 @@ function getSlotAvailability(dateStr, slotId) {
     booked: booked,
     available: Math.max(0, CONFIG.CAPACITY_PER_SLOT - booked),
     isHoliday: holidaySet.has(dateStr),
+    closed: !isSlotBookable(dateStr, slotId),
   };
 }
 
@@ -1453,4 +1567,60 @@ function formatDateForDisplay(dateStr) {
   const date = new Date(y, m - 1, d);
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
   return `${y}年${m}月${d}日(${weekdays[date.getDay()]})`;
+}
+
+// ===========================================================================
+// テスト用（GASエディタから手動実行。シート書き込み・メール送信は一切しない）
+// ===========================================================================
+
+/**
+ * 受付締切判定のテスト。
+ * isSlotBookable の第3引数に任意の「現在時刻」を注入して境界を確認する。
+ * 本番プロジェクトで実行しても安全（読み取りすらしない純関数テスト）。
+ */
+function test_isSlotBookable() {
+  // new Date(y, m-1, d, H, M, S) はスクリプトTZ（Asia/Tokyo）で解釈される
+  const cases = [
+    // [日付, 枠, now, 期待値, 説明]
+    ['2026-08-25', 'slot1', new Date(2026, 7, 25, 10, 29, 59), true,  '11時枠 締切1秒前'],
+    ['2026-08-25', 'slot1', new Date(2026, 7, 25, 10, 30, 0),  true,  '11時枠 締切ちょうど＝受付OK'],
+    ['2026-08-25', 'slot1', new Date(2026, 7, 25, 10, 30, 1),  false, '11時枠 締切1秒後＝受付NG'],
+    ['2026-08-25', 'slot2', new Date(2026, 7, 25, 10, 30, 1),  true,  '11時枠が締切でも13時枠は生きている'],
+    ['2026-08-25', 'slot2', new Date(2026, 7, 25, 12, 30, 0),  true,  '13時枠 締切ちょうど'],
+    ['2026-08-25', 'slot2', new Date(2026, 7, 25, 12, 30, 1),  false, '13時枠 締切後'],
+    ['2026-08-26', 'slot1', new Date(2026, 7, 25, 23, 59, 59), true,  '翌日の枠は前日深夜でもOK'],
+    ['2026-08-24', 'slot1', new Date(2026, 7, 25, 0, 0, 0),    false, '過去日は常にNG'],
+    ['2026-08-25', 'slotX', new Date(2026, 7, 25, 9, 0, 0),    false, '不正な枠IDはNG'],
+    ['',           'slot1', new Date(2026, 7, 25, 9, 0, 0),    false, '日付が空ならNG'],
+  ];
+
+  let ng = 0;
+  cases.forEach(c => {
+    const actual = isSlotBookable(c[0], c[1], c[2]);
+    const ok = (actual === c[3]);
+    if (!ok) ng++;
+    console.log(
+      (ok ? 'PASS' : '*** FAIL ***') + ' ' + c[4] +
+      ' | ' + c[0] + ' ' + c[1] +
+      ' now=' + Utilities.formatDate(c[2], CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm:ss') +
+      ' expected=' + c[3] + ' actual=' + actual
+    );
+  });
+  console.log(ng === 0 ? '=== すべて成功 ===' : '=== ' + ng + '件 失敗 ===');
+}
+
+/**
+ * 当日の空き状況に closed フラグが正しく付くかを目視確認する（読み取りのみ）。
+ */
+function test_availabilityClosedFlag() {
+  const todayStr = formatDate(new Date());
+  console.log('now = ' + Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'));
+  console.log('--- 現在時刻での本日の空き状況 ---');
+  console.log(JSON.stringify(getAvailabilityRange(todayStr, todayStr), null, 2));
+
+  // 任意時刻での見え方（第3引数はテスト用）
+  const p = todayStr.split('-').map(Number);
+  console.log('--- 本日 10:31 時点（11時枠が締切後）---');
+  console.log(JSON.stringify(
+    getAvailabilityRange(todayStr, todayStr, new Date(p[0], p[1] - 1, p[2], 10, 31)), null, 2));
 }

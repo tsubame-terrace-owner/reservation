@@ -198,6 +198,25 @@ body {
   opacity: 0.6;
 }
 
+/* 受付終了（当日枠で開始30分前を過ぎたもの）。
+   押せなくするが、残席数は読める濃さを保つ ―― 空いていれば店頭でご案内できる可能性があるため。
+   ※ .slot-btn.disabled と詳細度が同じなので、必ずこのブロックを後ろに置くこと */
+.slot-btn.closed {
+  opacity: 0.75;
+}
+
+.slot-closed-note {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 1.7;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
 .slot-label {
   font-size: 14px;
   font-weight: 500;
@@ -527,6 +546,7 @@ textarea {
   .slots-cell { padding: 8px; gap: 6px; }
   .slot-btn { min-width: 0; padding: 8px 4px; }
   .slot-label { font-size: 13px; }
+  .slot-closed-note { font-size: 9px; padding: 0 4px; }
   .confirm-dl {
     grid-template-columns: 80px 1fr;
     gap: 10px 12px;

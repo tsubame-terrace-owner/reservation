@@ -44,7 +44,7 @@
         </div>
         <div class="note">
           <ul>
-            <li>ご予約は翌日から1ヶ月先までとなります</li>
+            <li>ご予約は本日から1ヶ月先まで承ります</li>
             <li>各枠お1組あたり最大<span id="capacity-note">14</span>名様まで</li>
             <li>×は満席です</li>
           </ul>
@@ -175,14 +175,16 @@
   <script>
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbwGknTdmReT2qDHp_PrdF_u9MMZoWSbEBU8IMcLanTks-EDiDYxj1obttPRbokiue84/exec';
 
+    // サーバ（GAS）から取得した設定で上書きされる。ここの値は取得前／取得失敗時のみ効く
     let CONFIG = {
       slots: [
-        { id: 'slot1', label: '11:00〜' },
-        { id: 'slot2', label: '13:00〜' },
+        { id: 'slot1', label: '11:00〜', startHour: 11, startMinute: 0 },
+        { id: 'slot2', label: '13:00〜', startHour: 13, startMinute: 0 },
       ],
       capacity: 14,
       bookingWindowDays: 30,
-      minDaysAhead: 1,
+      minDaysAhead: 0,
+      cutoffMinutes: 30,
       storeName: '燕テラス',
     };
 
@@ -190,6 +192,8 @@
       selectedDate: null,
       selectedSlot: null,
       availability: null,
+      dateRange: null,      // サーバが返した予約可能期間（端末時計に頼らず再取得するため）
+      serverOffsetMs: 0,    // サーバ時刻とこの端末の時計の差分
       form: {},
     };
 
@@ -261,17 +265,51 @@
       return new Date(parts[0], parts[1] - 1, parts[2]);
     }
 
+    // ===== 受付締切（当日枠は開始30分前まで） =====
+    // お客様の端末は時計がズレていることもタイムゾーンが日本以外のこともあるので、
+    // 基準はサーバ時刻（serverNow）にする。日本時間は夏時間が無く常に UTC+9 なので、
+    // Date.UTC で組み立てれば端末のタイムゾーンに一切依存しない。
+    const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+    function nowMs() {
+      return Date.now() + state.serverOffsetMs;
+    }
+
+    function applyServerNow(res) {
+      if (res && typeof res.serverNow === 'number') {
+        state.serverOffsetMs = res.serverNow - Date.now();
+      }
+    }
+
+    // 枠の受付締切を epoch ms で返す。開始時刻が不明なら null（＝ローカル判定しない）
+    function slotCutoffMs(dateStr, slotId) {
+      const s = CONFIG.slots.find(x => x.id === slotId);
+      if (!s || s.startHour == null) return null;
+      const p = String(dateStr).split('-').map(Number);
+      const startMs = Date.UTC(p[0], p[1] - 1, p[2], s.startHour, s.startMinute || 0) - JST_OFFSET_MS;
+      return startMs - (CONFIG.cutoffMinutes || 30) * 60 * 1000;
+    }
+
+    // 締切ちょうど（11:00の枠なら10:30:00）は受付OK、それより後は受付終了
+    function isSlotClosed(dateStr, slotId) {
+      const cutoff = slotCutoffMs(dateStr, slotId);
+      if (cutoff == null) return false;
+      return nowMs() > cutoff;
+    }
+
     // ===== 初期化 =====
     // CONFIG と availability を1コールで取得（getInitialData で往復削減）
     function loadInitialData() {
       callApiRetry('getInitialData').then(res => {
         if (res && res.success) {
+          applyServerNow(res);
           if (res.config) {
             CONFIG = Object.assign(CONFIG, res.config);
             document.getElementById('capacity-note').textContent = CONFIG.capacity;
           }
           if (res.availability && res.dateRange) {
             state.availability = res.availability;
+            state.dateRange = res.dateRange;
             const start = parseLocalDate(res.dateRange.start);
             const end = parseLocalDate(res.dateRange.end);
             renderCalendar(start, end);
@@ -287,18 +325,19 @@
     }
 
     // 予約失敗後の再取得用
+    // 期間は初回ロードでサーバが返した dateRange をそのまま使う。
+    // 端末の時計・タイムゾーンから自前計算すると「今日」がズレる可能性があるため。
     function loadAvailability() {
-      const today = new Date();
-      const start = new Date(today);
-      start.setDate(start.getDate() + CONFIG.minDaysAhead);
-      const end = new Date(today);
-      end.setDate(end.getDate() + CONFIG.bookingWindowDays);
+      if (!state.dateRange) { loadInitialData(); return; }
+      const start = parseLocalDate(state.dateRange.start);
+      const end = parseLocalDate(state.dateRange.end);
 
       callApiRetry('getAvailability', {
-        startDate: formatDate(start),
-        endDate: formatDate(end),
+        startDate: state.dateRange.start,
+        endDate: state.dateRange.end,
       }).then(res => {
         if (res && res.success && res.availability) {
+          applyServerNow(res);
           state.availability = res.availability;
           renderCalendar(start, end);
         } else {
@@ -360,15 +399,25 @@
             CONFIG.slots.forEach(s => {
               const info = avail[s.id] || { available: CONFIG.capacity };
               const full = info.available <= 0;
+              // サーバの判定（取得時点のスナップショット）と、いま現在のローカル再計算の OR。
+              // 一度「受付終了」になった枠が時間経過で開き直ることは無いので、常に安全側に倒れる。
+              const closed = (info.closed === true) || isSlotClosed(dateStr, s.id);
               const btn = document.createElement('button');
               btn.type = 'button';
-              btn.className = 'slot-btn' + (full ? ' disabled' : '');
-              btn.disabled = full;
+              btn.className = 'slot-btn' + ((full || closed) ? ' disabled' : '') + (closed ? ' closed' : '');
+              btn.disabled = full || closed;
+              btn.dataset.date = dateStr;
+              btn.dataset.slot = s.id;
+              btn.dataset.full = full ? '1' : '0';
+              // 受付終了でも残席は表示したままにする（空いていれば店頭でご案内できるため）
               const availLabel = full ? '×' : (info.available >= 6 ? '◯' : '残り' + info.available + '名');
               btn.innerHTML =
                 '<span class="slot-label">' + s.label + '</span>' +
-                '<span class="slot-avail">' + availLabel + '</span>';
-              btn.addEventListener('click', () => onSelectSlot(dateStr, s.id));
+                '<span class="slot-avail">' + availLabel + '</span>' +
+                ((closed && !full) ? '<span class="slot-closed-note">受付終了</span>' : '');
+              if (!btn.disabled) {
+                btn.addEventListener('click', () => onSelectSlot(dateStr, s.id));
+              }
               slotsCell.appendChild(btn);
             });
           }
@@ -380,6 +429,42 @@
         wrap.appendChild(monthBlock);
       });
     }
+
+    // ===== 締切跨ぎ対策 =====
+    // ページを開いたまま受付締切を跨ぐケースに対応する。
+    // サーバへの再問い合わせは不要（サーバ時刻の差分と枠の開始時刻からローカルで計算できる）。
+    // カレンダーを作り直すと選択状態が壊れるので、該当ボタンの属性だけを更新する。
+    function refreshClosedStates() {
+      document.querySelectorAll('.slot-btn[data-date]').forEach(function (btn) {
+        if (btn.dataset.full === '1') return;         // 満席は元から「×」で押せない
+        if (btn.classList.contains('closed')) return; // すでに受付終了
+        if (!isSlotClosed(btn.dataset.date, btn.dataset.slot)) return;
+        btn.classList.add('disabled', 'closed');
+        btn.disabled = true;
+        if (!btn.querySelector('.slot-closed-note')) {
+          const note = document.createElement('span');
+          note.className = 'slot-closed-note';
+          note.textContent = '受付終了';
+          btn.appendChild(note);
+        }
+      });
+
+      // 入力途中で選択中の枠が締切を跨いだら、日時選択に戻す（完了画面にいる時は何もしない）
+      if (state.selectedDate && state.selectedSlot &&
+          isSlotClosed(state.selectedDate, state.selectedSlot) &&
+          !document.getElementById('step-complete').classList.contains('active')) {
+        showToast('選択中のお時間の受付が終了しました。別のお時間をお選びください。');
+        state.selectedDate = null;
+        state.selectedSlot = null;
+        showStep('step-calendar');
+      }
+    }
+
+    setInterval(refreshClosedStates, 30000);
+    // スマホをロックしている間は setInterval が止まるので、画面復帰時にも必ず再評価する
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) refreshClosedStates();
+    });
 
     function onSelectSlot(dateStr, slotId) {
       state.selectedDate = dateStr;
@@ -561,7 +646,13 @@
             showStep('step-complete');
           } else {
             showToast((res && res.message) || '予約に失敗しました');
-            if (res && res.message && /残り|満席|休業/.test(res.message)) {
+            if (res && res.code === 'SLOT_CLOSED') {
+              // 確認画面にいる間に受付締切を跨いだ場合。日時選択からやり直してもらう
+              state.selectedDate = null;
+              state.selectedSlot = null;
+              loadAvailability();
+              showStep('step-calendar');
+            } else if (res && res.message && /残り|満席|休業/.test(res.message)) {
               loadAvailability();
             }
           }
@@ -593,6 +684,16 @@
         });
       });
     })();
+
+    // ===== 動作確認用 =====
+    // ブラウザの開発者ツールから __setFakeNow('2026-08-25T10:31:00+09:00') と打つと、
+    // その時刻だと思い込んで画面を描き直す（受付終了の見た目を確認するため）。
+    // 見た目が変わるだけで、実際の受付可否はサーバが本物の時刻で判定するため悪用はできない。
+    window.__setFakeNow = function (iso) {
+      state.serverOffsetMs = new Date(iso).getTime() - Date.now();
+      refreshClosedStates();
+      return new Date(nowMs()).toString();
+    };
 
     // ===== 初期表示 =====
     loadInitialData();
