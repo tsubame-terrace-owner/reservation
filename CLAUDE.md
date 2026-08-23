@@ -99,6 +99,9 @@ clasp redeploy <お客様デプロイID> -V <番号> -d "変更の説明"   # �
 
 ### 注意
 
+- **`clasp push` は必ず `main` ブランチから実行する**。clasp はブランチを見ないので、
+  古い `gas/` を持つ feature ブランチから push すると、**既にデプロイ済みの変更が本番から静かに消える**。
+  feature ブランチで GAS を検証したい時は、先に `git merge main` してから push すること
 - **push だけではお客様に反映されない**。必ず ②③まで実施
 - 本番デプロイ（③）は**お客様の実画面が変わる**ので、文言変更はオーナー確認後に
 - 変になったら `clasp pull` で戻す／固定デプロイを旧バージョンに `redeploy` して切り戻せる
@@ -121,6 +124,15 @@ clasp redeploy <お客様デプロイID> -V <番号> -d "変更の説明"   # �
 - ⚠️ **GAS配信の `gas/Form.html`・`gas/Admin.html`・`gas/Change.html` は旧UI（大人/子ども）のまま**。オーナーの手動予約画面などで、お客様は使わないため実害はないが未整合。
 - → **これらの gas HTML を次に触る時に、案Cへ揃える**こと。参考実装は `docs/form.html`（ラジオ+内訳ステッパー+注意書き、payload に schoolChildren/preschoolChildren を送る）。
 - 詳細はメモリ `child-reservation-migration` 参照。
+
+**当日予約（枠開始30分前まで受付）**（2026-08-23 リリース）:
+- お客様向けの `docs/form.html`・`docs/change.html` のみ対応。締切判定は GAS の `isSlotBookable()` に集約。
+- ⚠️ **旧GAS UI（`gas/Form.html`・`gas/Change.html`）は当日予約に非対応**。
+  `renderFormPage` / `renderChangePage` の中で `minDaysAhead: 1` をハードコードして挙動を凍結してある。
+  上の案C対応でこれらを触る時は、この固定値も併せて見直すこと。
+- `gas/Admin.html`（手動予約）は従来どおり当日の過ぎた枠にも入力できる。
+  飛び込み客の事後記録に必要なので**意図的にそのまま**にしている。
+- 当日予約を止めたい時は `CONFIG.MIN_BOOKING_DAYS_AHEAD` を `1` に戻して再デプロイすれば全面停止できる。
 
 ## 触らないでいいこと
 
