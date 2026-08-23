@@ -415,7 +415,7 @@
               btn.innerHTML =
                 '<span class="slot-label">' + s.label + '</span>' +
                 '<span class="slot-avail">' + availLabel + '</span>' +
-                ((closed && !full) ? '<span class="slot-closed-note">受付終了</span>' : '');
+                ((closed && !full) ? '<span class="slot-closed-note">予約受付終了</span>' : '');
               if (!btn.disabled) {
                 btn.addEventListener('click', () => onSelectSlot(dateStr, s.id));
               }
@@ -445,7 +445,7 @@
         if (!btn.querySelector('.slot-closed-note')) {
           const note = document.createElement('span');
           note.className = 'slot-closed-note';
-          note.textContent = '受付終了';
+          note.textContent = '予約受付終了';
           btn.appendChild(note);
         }
       });

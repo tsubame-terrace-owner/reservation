@@ -179,10 +179,13 @@ body {
   transition: all 0.15s;
   font-family: inherit;
   color: var(--text);
+  /* 時刻／残席／予約受付終了ラベルを横並びの折り返しで置く。
+     通常は時刻だけ幅100%にして改行させ、時刻／残席の縦2段にする。 */
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 2px;
+  gap: 2px 5px;
 }
 
 .slot-btn:hover:not(.disabled) {
@@ -205,19 +208,32 @@ body {
   opacity: 0.75;
 }
 
+/* 予約受付終了の枠だけ組み方を変える。
+   1段目に「11:00〜 残り3名」をまとめ、2段目にラベルを単独で置くことで、
+   画面が狭くてもラベルが3段目に折り返さず、行の高さが受付中の枠と揃う。 */
+.slot-btn.closed .slot-label {
+  flex: 0 0 auto;
+}
+
+.slot-btn.closed .slot-closed-note {
+  flex: 0 0 100%;
+}
+
 .slot-closed-note {
-  display: inline-block;
-  margin-top: 2px;
   padding: 0 5px;
   font-size: 10px;
-  line-height: 1.7;
+  /* 残席（11px × line-height 1.7 = 約19px）より低く抑え、行の高さを支配させない */
+  line-height: 1.5;
   letter-spacing: 0.04em;
+  white-space: nowrap;
   color: var(--text-muted);
   border: 1px solid var(--border);
   border-radius: 2px;
 }
 
 .slot-label {
+  /* 幅いっぱいにして必ず改行させ、残席を2段目に落とす */
+  flex: 0 0 100%;
   font-size: 14px;
   font-weight: 500;
 }
