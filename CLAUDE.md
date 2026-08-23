@@ -12,7 +12,7 @@ GitHub Pages のフロントエンド + GAS のバックエンドで動く。
 | フォルダ | 役割 |
 |---|---|
 | `docs/` | **GitHub Pages で公開されるフロントエンド**（お客様が見る画面）。`index.html`（トップ） / `menu.html`（お品書き） / `form.html` / `cancel.html` / `change.html` など |
-| `docs/assets/` | 公開画像。`logo.png`（紺・透過） / `logo-white.png`（白・透過） / `hero.mp4` / `menu/`（料理写真） |
+| `docs/assets/` | 公開画像。ロゴ4種（縦型 `logo.png` / `logo-white.png`、横型 `logo-wide.png` / `logo-wide-white.png`。いずれも透過PNG。白版は背景動画や写真の上に載せる用） / `hero.mp4` / `menu/`（料理写真） |
 | `gas/` | **GAS バックエンド** + HtmlService で配信するメール/管理画面 |
 | `tools/` | 開発補助スクリプト。`prep-photo.py`（料理写真の切り出し・圧縮） |
 | `spike/` | 実験用プロトタイプ（本番には影響しない） |
