@@ -277,6 +277,16 @@ body {
   padding-left: 18px;
 }
 
+/* 注意事項の見出し（確認画面）。本文より少し大きく濃くして、
+   箱の中に何が書いてあるかが一目で分かるようにする */
+.notice-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
 /* ===== 選択済み表示 ===== */
 .selected-slot {
   background: var(--bg-subtle);
