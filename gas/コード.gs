@@ -383,6 +383,16 @@ function submitReservation(data) {
       };
     }
 
+    // 二重送信チェック（同じ電話/メール＋同日＋同枠で、直近数分以内に既に予約済みなら新規作成しない）
+    const duplicate = findRecentDuplicateReservation(data);
+    if (duplicate) {
+      return {
+        success: true,
+        message: 'ご予約を承りました。ご登録のメールアドレスに確認メールをお送りしています。',
+        reservationId: duplicate.reservationId,
+      };
+    }
+
     // 書き込み
     const reservation = writeReservation(data, totalPeople);
 
@@ -876,6 +886,32 @@ function extractChildCounts(data) {
     return { school: school, pre: pre, children: school + pre, hasBreakdown: true };
   }
   return { school: '', pre: '', children: Math.max(0, Number(data.children) || 0), hasBreakdown: false };
+}
+
+// 二重送信対策: 同じ電話番号 or メールアドレス＋同日＋同枠の予約が
+// 直近数分以内に既に作成されていないか確認する（ネットワーク不調時の再送信で重複行ができる事故を防ぐ）
+const DUPLICATE_CHECK_WINDOW_MS = 3 * 60 * 1000; // 3分
+
+function findRecentDuplicateReservation(data) {
+  const phone = (data.phone || '').trim();
+  const email = (data.email || '').trim();
+  if (!phone && !email) return null;
+
+  const now = Date.now();
+  const active = getAllActiveReservations();
+  for (const r of active) {
+    if (r.reservationDate !== data.reservationDate) continue;
+    if (r.slot !== data.slot) continue;
+    const samePhone = phone && r.phone === phone;
+    const sameEmail = email && r.email === email;
+    if (!samePhone && !sameEmail) continue;
+
+    const createdAt = r.createdAt instanceof Date ? r.createdAt.getTime() : new Date(r.createdAt).getTime();
+    if (now - createdAt <= DUPLICATE_CHECK_WINDOW_MS) {
+      return r;
+    }
+  }
+  return null;
 }
 
 function writeReservation(data, totalPeople) {
