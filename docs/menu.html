@@ -62,14 +62,11 @@
       position: sticky;
       top: 0;
       z-index: 5;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
+      text-align: center;
       background: var(--bg);
       padding: 14px 0 11px;
       border-bottom: 1px solid var(--border-light);
-      margin-bottom: 14px;
+      margin-bottom: 18px;
     }
 
     .menu-title {
@@ -77,22 +74,6 @@
       font-weight: 500;
       margin: 0;
       letter-spacing: 0.1em;
-    }
-
-    /* 「1つお選びいただけます」の但し書き */
-    .menu-pick {
-      font-size: 12px;
-      color: var(--text-muted);
-      letter-spacing: 0.05em;
-    }
-
-    /* カテゴリ全体にかかる補足（「季節の副菜とポタージュスープが付きます」等） */
-    .menu-note-line {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin: 0 0 16px;
-      text-align: center;
-      line-height: 1.8;
     }
 
     /*
@@ -377,9 +358,7 @@
       <section class="menu-section">
         <div class="menu-head">
           <h2 class="menu-title">プレート</h2>
-          <span class="menu-pick">1つお選びいただけます</span>
         </div>
-        <p class="menu-note-line">季節の副菜とポタージュスープが付きます。</p>
 
         <ul class="menu-grid">
           <li class="menu-card">
@@ -404,7 +383,6 @@
       <section class="menu-section">
         <div class="menu-head">
           <h2 class="menu-title">デザート</h2>
-          <span class="menu-pick">1つお選びいただけます</span>
         </div>
 
         <ul class="menu-grid">
@@ -438,7 +416,6 @@
       <section class="menu-section">
         <div class="menu-head">
           <h2 class="menu-title">ドリンク</h2>
-          <span class="menu-pick">1つお選びいただけます</span>
         </div>
 
         <div class="drink-group">
