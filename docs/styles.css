@@ -47,6 +47,15 @@ body {
   color: var(--text);
 }
 
+/* ヘッダーのロゴ画像。h1 の中に入れ、alt に店名を残す */
+.store-logo {
+  display: block;
+  width: 120px;
+  max-width: 55%;
+  height: auto;
+  margin: 0 auto;
+}
+
 .subtitle {
   margin: 0;
   font-size: 14px;

@@ -72,7 +72,13 @@
     .hero {
       position: relative;
       flex: 1;
+      /*
+        スマホの 100vh はURLバーや下部ツールバーを含んだ高さを指すため、
+        実際に見えている領域より縦に長くなり、中央寄せの中身が下寄りに見える。
+        svh（実際の表示領域）を使って解消する。1行目は非対応ブラウザ用の保険。
+      */
       min-height: 100vh;
+      min-height: 100svh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -105,14 +111,25 @@
       padding: 24px;
       max-width: 480px;
       width: 100%;
+      /*
+        真ん中ぴったりだと人の目には沈んで見えるので、下に余白を持たせて
+        中身を少し上に押し上げる（見える量はこの値の半分）
+      */
+      margin-bottom: 9svh;
     }
 
     .store-name {
-      font-size: 36px;
-      font-weight: 500;
-      letter-spacing: 0.18em;
-      margin-bottom: 0;
-      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      margin: 0;
+    }
+
+    /* 背景動画の上に置くので白版のロゴを使う */
+    .hero-logo {
+      display: block;
+      width: 190px;
+      max-width: 62%;
+      height: auto;
+      margin: 0 auto;
+      filter: drop-shadow(0 2px 14px rgba(0,0,0,0.45));
     }
 
     /* CTAはこのラッパー内に縦積み。将来アクセス等を足す時はここに <a> を1行足す */
@@ -176,7 +193,7 @@
 
     /* ===== レスポンシブ ===== */
     @media (max-width: 480px) {
-      .store-name { font-size: 30px; }
+      .hero-logo { width: 165px; }
       .hero-actions { margin-top: 44px; gap: 18px; }
       .hero-btn { padding: 17px 20px; font-size: 15px; }
     }
@@ -191,7 +208,7 @@
     </video>
     <div class="hero-overlay"></div>
     <div class="hero-content">
-      <h1 class="store-name">燕テラス</h1>
+      <h1 class="store-name"><img class="hero-logo" src="assets/logo-white.png" alt="燕テラス" width="800" height="809"></h1>
       <div class="hero-actions">
         <a class="hero-btn hero-btn-ghost" href="./menu.html">ランチメニューはこちら</a>
         <a class="hero-btn hero-btn-primary" href="./form.html">ご予約はこちら</a>
