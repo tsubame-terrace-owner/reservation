@@ -81,7 +81,10 @@ GAS の応答は実測 **2.5〜3.7秒**（GAS起動＋リダイレクトの固�
 `index.html` を開いた時点で裏で `getInitialData` を叩き、`sessionStorage['tt_initialData_v1']` に
 `{ fetchedAt, res }` を保存。`form.html` の `readPrefetched()` がそれを拾って**待ち時間ゼロで描画**する。
 
-- **`GAS_URL` が index.html と form.html の2箇所にある**。デプロイIDを変える時は**必ず両方**直すこと
+- **`GAS_URL` は `docs/` 内の4ファイルにある**（`index.html` / `form.html` / `cancel.html` / `change.html`）。
+  先読みの追加で index.html が増え、3→4箇所になった。
+  `clasp redeploy` で貼り替えている限りIDは変わらないが、**デプロイを作り直した時は4つ全部**直すこと。
+  確認は `grep -rn "script.google.com/macros/s/" docs/`（直し忘れたページだけが静かに壊れる）
 - 使うのは2分以内のものだけ。日付をまたいだ場合（`dateRange.start` が今日でない）も破棄する
 - サーバ時刻とのズレは**取得時点の `fetchedAt` 基準**で計算する。`Date.now()` と比べると先読みからの経過分だけ狂う
 - 一度読んだら `sessionStorage` から削除（古い残席を使い回さない）
