@@ -346,8 +346,8 @@ function getAvailabilityRange(startDateStr, endDateStr, nowOverride) {
   // 1レスポンス内で判定時刻を固定する（枠ごとに基準時刻がズレるのを防ぐ）
   const now = nowOverride == null ? new Date() : new Date(nowOverride);
 
-  // 予約集計
-  const reservations = getAllActiveReservations();
+  // 予約集計（集計に要る列だけを読む軽量版。行数が増えても重くなりにくい）
+  const reservations = getActiveBookingRows();
   const bookedMap = {}; // 'YYYY-MM-DD|slotId' => 合計人数
   reservations.forEach(r => {
     const key = `${r.reservationDate}|${r.slot}`;
@@ -930,6 +930,62 @@ function getAllActiveReservations() {
     .filter(r => r.status === STATUS.CONFIRMED);
 }
 
+// 空き状況の集計で読む列の範囲（C列〜L列）
+const AVAIL_FIRST_COL = 3;  // status
+const AVAIL_LAST_COL = 12;  // totalPeople
+
+/**
+ * 空き状況の集計だけに使う、軽量版の予約読み込み。
+ *
+ * 予約シートは開業以来ずっと行が増え続けるので、全21列を読むと行数に比例して遅くなる。
+ * 集計に必要なのは status / reservationDate / slot / 人数 だけなので、
+ * C列(status)〜L列(totalPeople) の10列に絞って読む（読むセル数がおよそ半分になる）。
+ *
+ * ※ 予約オブジェクト全体が要る用途（メール送信・重複チェック等）は
+ *   従来どおり getAllActiveReservations() を使うこと。
+ *
+ * @returns {Array<{reservationDate: string, slot: string, totalPeople: number}>}
+ */
+function getActiveBookingRows() {
+  const sheet = getReservationsSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  const numCols = AVAIL_LAST_COL - AVAIL_FIRST_COL + 1;
+  // 切り出した範囲の中での位置に変換する（RESERVATION_HEADERS は0始まり、列番号は1始まり）
+  const offset = h => RESERVATION_HEADERS.indexOf(h) + 1 - AVAIL_FIRST_COL;
+  const iStatus = offset('status');
+  const iDate = offset('reservationDate');
+  const iSlot = offset('slot');
+  const iAdults = offset('adults');
+  const iChildren = offset('children');
+  const iTotal = offset('totalPeople');
+
+  // 列順が変わった時に黙って壊れないよう保険をかける。
+  // 想定外なら従来の全列読み込みにフォールバックする（遅いだけで結果は正しい）。
+  const idxs = [iStatus, iDate, iSlot, iAdults, iChildren, iTotal];
+  if (idxs.some(i => i < 0 || i >= numCols)) {
+    console.warn('getActiveBookingRows: 列レイアウトが想定外のため全列読み込みにフォールバック');
+    return getAllActiveReservations();
+  }
+
+  const values = sheet.getRange(2, AVAIL_FIRST_COL, lastRow - 1, numCols).getValues();
+  const out = [];
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    if (row[iStatus] !== STATUS.CONFIRMED) continue;
+    let dateStr = row[iDate];
+    if (dateStr instanceof Date) dateStr = formatDate(dateStr);
+    out.push({
+      reservationDate: dateStr,
+      slot: row[iSlot],
+      // totalPeople が空の旧データは adults + children で補う（rowToReservation と同じ扱い）
+      totalPeople: Number(row[iTotal]) || ((Number(row[iAdults]) || 0) + (Number(row[iChildren]) || 0)),
+    });
+  }
+  return out;
+}
+
 function rowToReservation(row) {
   const r = {};
   RESERVATION_HEADERS.forEach((h, i) => {
@@ -1078,7 +1134,7 @@ function updateReservationField(reservationId, fieldName, value) {
 }
 
 function getSlotAvailability(dateStr, slotId) {
-  const reservations = getAllActiveReservations();
+  const reservations = getActiveBookingRows();
   let booked = 0;
   reservations.forEach(r => {
     if (r.reservationDate === dateStr && r.slot === slotId) {
