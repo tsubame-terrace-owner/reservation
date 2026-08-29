@@ -303,30 +303,90 @@
       return nowMs() > cutoff;
     }
 
+    // ===== 先読みキャッシュ =====
+    // index.html が裏で取得しておいた getInitialData の結果を使い、
+    // トップ経由で来たお客様には待ち時間ゼロでカレンダーを出す。
+    // 使えない・古い場合は何もせず通常どおりサーバから取得する。
+    const PREFETCH_KEY = 'tt_initialData_v1';
+    const PREFETCH_MAX_AGE_MS = 2 * 60 * 1000; // これより古ければ取り直す
+
+    // epoch ms から日本時間の 'YYYY-MM-DD' を作る（端末のタイムゾーンに依存しない）
+    function jstDateStr(ms) {
+      const d = new Date(ms + JST_OFFSET_MS);
+      return d.getUTCFullYear() + '-' +
+        String(d.getUTCMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getUTCDate()).padStart(2, '0');
+    }
+
+    // 使える先読み結果があれば { res, offsetMs } を返す。無ければ null
+    function readPrefetched() {
+      try {
+        if (!window.sessionStorage) return null;
+        const raw = sessionStorage.getItem(PREFETCH_KEY);
+        if (!raw) return null;
+        // 一度使ったら捨てる。フォームに戻ってきた時に古い残席を使い回さないため
+        sessionStorage.removeItem(PREFETCH_KEY);
+
+        const cached = JSON.parse(raw);
+        if (!cached || !cached.res || !cached.fetchedAt) return null;
+        const age = Date.now() - cached.fetchedAt;
+        if (age < 0 || age > PREFETCH_MAX_AGE_MS) return null;
+
+        const res = cached.res;
+        if (!res.success || !res.availability || !res.dateRange) return null;
+
+        // サーバ時刻とのズレは「取得した時点」で計算する。
+        // いま Date.now() と比べると、先読みからの経過時間の分だけ狂ってしまう
+        const offsetMs = (typeof res.serverNow === 'number')
+          ? res.serverNow - cached.fetchedAt
+          : 0;
+
+        // 先読み後に日付をまたいでいたら「本日」がズレるので使わない
+        if (res.dateRange.start !== jstDateStr(Date.now() + offsetMs)) return null;
+
+        return { res: res, offsetMs: offsetMs };
+      } catch (e) {
+        return null; // 壊れたJSON・プライベートモード等。通常取得にまかせる
+      }
+    }
+
     // ===== 初期化 =====
     // CONFIG と availability を1コールで取得（getInitialData で往復削減）
+
+    // getInitialData の応答を画面へ反映する。描画できたら true
+    // ※ サーバ時刻のズレ(state.serverOffsetMs)は呼び出し側で先に設定しておくこと。
+    //   renderCalendar が受付締切の判定に使うため。
+    function applyInitialData(res) {
+      if (!res || !res.success) return false;
+      if (res.config) {
+        CONFIG = Object.assign(CONFIG, res.config);
+        document.getElementById('capacity-note').textContent = CONFIG.capacity;
+      }
+      if (!res.availability || !res.dateRange) return false;
+      state.availability = res.availability;
+      state.dateRange = res.dateRange;
+      renderCalendar(parseLocalDate(res.dateRange.start), parseLocalDate(res.dateRange.end));
+      return true;
+    }
+
+    function showCalendarError() {
+      document.getElementById('calendar').innerHTML =
+        '<p class="error">空き状況の取得に失敗しました。再読み込みしてください。</p>';
+    }
+
     function loadInitialData() {
+      // トップページからの先読みがあれば、サーバを待たずに描画する
+      const pre = readPrefetched();
+      if (pre) {
+        state.serverOffsetMs = pre.offsetMs;
+        if (applyInitialData(pre.res)) return;
+      }
+
       callApiRetry('getInitialData').then(res => {
-        if (res && res.success) {
-          applyServerNow(res);
-          if (res.config) {
-            CONFIG = Object.assign(CONFIG, res.config);
-            document.getElementById('capacity-note').textContent = CONFIG.capacity;
-          }
-          if (res.availability && res.dateRange) {
-            state.availability = res.availability;
-            state.dateRange = res.dateRange;
-            const start = parseLocalDate(res.dateRange.start);
-            const end = parseLocalDate(res.dateRange.end);
-            renderCalendar(start, end);
-            return;
-          }
-        }
-        document.getElementById('calendar').innerHTML =
-          '<p class="error">空き状況の取得に失敗しました。再読み込みしてください。</p>';
+        applyServerNow(res);
+        if (!applyInitialData(res)) showCalendarError();
       }).catch(() => {
-        document.getElementById('calendar').innerHTML =
-          '<p class="error">空き状況の取得に失敗しました。再読み込みしてください。</p>';
+        showCalendarError();
       });
     }
 
@@ -347,12 +407,10 @@
           state.availability = res.availability;
           renderCalendar(start, end);
         } else {
-          document.getElementById('calendar').innerHTML =
-            '<p class="error">空き状況の取得に失敗しました。再読み込みしてください。</p>';
+          showCalendarError();
         }
       }).catch(() => {
-        document.getElementById('calendar').innerHTML =
-          '<p class="error">空き状況の取得に失敗しました。再読み込みしてください。</p>';
+        showCalendarError();
       });
     }
 

@@ -221,5 +221,29 @@
   <footer class="footer">
     &copy; 燕テラス
   </footer>
+
+  <!-- 予約フォームの空き状況を裏で先読みしておく。
+       GAS の応答には2〜3秒かかるので、お客様がこのトップを見ている間に取得を済ませ、
+       「ご予約はこちら」を押した先の form.html で即描画できるようにする。
+       失敗しても画面には何も起きない（form.html 側が通常どおり取得し直すだけ）。
+       ※ GAS_URL は docs/form.html と同じ値。デプロイIDを変える時は両方直すこと。 -->
+  <script>
+  (function () {
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbwGknTdmReT2qDHp_PrdF_u9MMZoWSbEBU8IMcLanTks-EDiDYxj1obttPRbokiue84/exec';
+    var PREFETCH_KEY = 'tt_initialData_v1';
+    try {
+      if (!window.sessionStorage || !window.fetch) return;
+      var body = new URLSearchParams({ data: JSON.stringify({ action: 'getInitialData' }) });
+      fetch(GAS_URL, { method: 'POST', body: body })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (!res || !res.success || !res.availability || !res.dateRange) return;
+          // 受け取った時刻も一緒に持たせる（form.html 側で鮮度とサーバ時刻のズレを判定するため）
+          sessionStorage.setItem(PREFETCH_KEY, JSON.stringify({ fetchedAt: Date.now(), res: res }));
+        })
+        .catch(function () {});
+    } catch (e) { /* プライベートモード等。先読みしないだけ */ }
+  })();
+  </script>
 </body>
 </html>
