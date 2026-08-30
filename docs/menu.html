@@ -510,5 +510,20 @@
   <div class="sticky-cta">
     <a href="./form.html">ご予約はこちら</a>
   </div>
+
+  <!-- 「お品書きを見た人が予約に進んだか」を計測する。
+       お品書きの内容が予約につながっているかを見るための指標。 -->
+  <script>
+  (function () {
+    try {
+      var links = document.querySelectorAll('a[href="./form.html"]');
+      Array.prototype.forEach.call(links, function (a) {
+        a.addEventListener('click', function () {
+          if (typeof gtag === 'function') gtag('event', 'menu_to_form_clicked');
+        });
+      });
+    } catch (e) { /* 計測できないだけ。遷移は妨げない */ }
+  })();
+  </script>
 </body>
 </html>

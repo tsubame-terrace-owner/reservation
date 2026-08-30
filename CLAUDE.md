@@ -71,6 +71,30 @@ GitHub Pages のフロントエンド + GAS のバックエンドで動く。
 - **メールテンプレ修正**: `gas/Email*.html` を編集 → clasp push で反映
 - お客様に見える文言の変更は **送信前にオーナーが確認** できる形にする
 
+## GA4 の計測（測定ID: G-GTXCXLNSX5）
+
+`docs/` の全ページに gtag を設置済み。ページビューは自動、下記はコード側で送っているカスタムイベント。
+
+| イベント名 | 送信箇所 | 意味 |
+|---|---|---|
+| `menu_clicked` | index.html | トップ →「ランチメニューはこちら」を押した |
+| `reservation_clicked` | index.html | トップ →「ご予約はこちら」を押した |
+| `menu_to_form_clicked` | menu.html | お品書きを見た後に予約へ進んだ |
+| `slot_selected` | form.html | 日時枠を選んだ |
+| `field_completed` | form.html | 入力項目を埋めた |
+| `confirm_reached` | form.html | 確認画面に到達した |
+| `reservation_completed` | form.html | 予約完了 |
+
+### 追加する時の約束
+
+- **イベント名そのものを分ける**。パラメータで区別すると GA4 側でカスタムディメンションの
+  登録が必要になり、オーナーが標準レポートで見られなくなる
+- 必ず `if (typeof gtag === 'function')` で囲む（広告ブロッカー等で gtag が無い場合に画面を壊さない）
+- リンククリックの計測で `preventDefault` して遷移を遅らせないこと。
+  gtag は `sendBeacon` で送るので、遷移してもイベントは届く
+- index.html の CTA 計測は `.hero-actions` 内の `href` で対象を判定している。
+  将来アクセスページ等を足す時は、スクリプト内の `EVENTS` に1行足せば計測対象になる
+
 ## 空き状況の表示速度（2026-08-30 対応）
 
 GAS の応答は実測 **2.5〜3.7秒**（GAS起動＋リダイレクトの固定費で約1.0〜1.5秒、シート読み込みで約1.2〜1.5秒）。

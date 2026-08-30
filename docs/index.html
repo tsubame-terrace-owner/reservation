@@ -245,5 +245,28 @@
     } catch (e) { /* プライベートモード等。先読みしないだけ */ }
   })();
   </script>
+
+  <!-- CTAのクリック計測。トップから「お品書き」と「ご予約」のどちらへ動いたかをGA4で見る。
+       ページ遷移は止めない（gtag は sendBeacon で送るため遷移しても届く）。
+       GA4のカスタムディメンション登録なしで「イベント」レポートに出るよう、
+       パラメータではなくイベント名そのものを分けている。 -->
+  <script>
+  (function () {
+    var EVENTS = {
+      './menu.html': 'menu_clicked',        // トップ →「ランチメニューはこちら」
+      './form.html': 'reservation_clicked'  // トップ →「ご予約はこちら」
+    };
+    try {
+      var links = document.querySelectorAll('.hero-actions a[href]');
+      Array.prototype.forEach.call(links, function (a) {
+        var name = EVENTS[a.getAttribute('href')];
+        if (!name) return;
+        a.addEventListener('click', function () {
+          if (typeof gtag === 'function') gtag('event', name);
+        });
+      });
+    } catch (e) { /* 計測できないだけ。遷移は妨げない */ }
+  })();
+  </script>
 </body>
 </html>
