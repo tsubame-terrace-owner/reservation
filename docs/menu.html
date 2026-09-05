@@ -292,10 +292,17 @@
       padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
     }
 
-    .sticky-cta a {
-      display: block;
+    /* 予約（主）と地図（副）を横並びにする箱 */
+    .sticky-cta-inner {
+      display: flex;
+      gap: 10px;
       max-width: 600px;
       margin: 0 auto;
+    }
+
+    .sticky-cta a {
+      display: block;
+      flex: 1 1 auto;
       text-align: center;
       text-decoration: none;
       background: var(--accent);
@@ -312,6 +319,22 @@
     .sticky-cta a:hover {
       background: var(--accent-dark);
       border-color: var(--accent-dark);
+    }
+
+    /* 地図は副ボタン。予約ボタンより目立たせない */
+    .sticky-cta a.cta-map {
+      flex: 0 0 auto;
+      background: var(--bg-card);
+      color: var(--text);
+      border-color: var(--border);
+      padding-left: 18px;
+      padding-right: 18px;
+      white-space: nowrap;
+    }
+
+    .sticky-cta a.cta-map:hover {
+      background: var(--bg-subtle);
+      border-color: var(--border);
     }
 
     /* 固定CTAがフッターに被らないよう下に余白を確保 */
@@ -508,7 +531,11 @@
 
   <!-- 画面下に常に出る予約CTA -->
   <div class="sticky-cta">
-    <a href="./form.html">ご予約はこちら</a>
+    <div class="sticky-cta-inner">
+      <a href="./form.html">ご予約はこちら</a>
+      <a class="cta-map" href="https://maps.app.goo.gl/hbS9Suf9GfLzBdL39" target="_blank" rel="noopener"
+         data-ga="map_clicked" title="Googleマップで場所を見る">地図</a>
+    </div>
   </div>
 
   <!-- 「お品書きを見た人が予約に進んだか」を計測する。
@@ -520,6 +547,14 @@
       Array.prototype.forEach.call(links, function (a) {
         a.addEventListener('click', function () {
           if (typeof gtag === 'function') gtag('event', 'menu_to_form_clicked');
+        });
+      });
+
+      // data-ga を持つリンク（地図など）。イベント名は属性で持たせる
+      var tagged = document.querySelectorAll('a[data-ga]');
+      Array.prototype.forEach.call(tagged, function (a) {
+        a.addEventListener('click', function () {
+          if (typeof gtag === 'function') gtag('event', a.getAttribute('data-ga'));
         });
       });
     } catch (e) { /* 計測できないだけ。遷移は妨げない */ }
